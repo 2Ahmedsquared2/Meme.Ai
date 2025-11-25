@@ -26,6 +26,8 @@ Thumbs.db
 # Firebase credentials (IMPORTANT: never commit these!)
 *-firebase-adminsdk-*.json
 serviceAccountKey.json
+Credentials*.json
+Credential*.json
 
 # Logs
 *.log
