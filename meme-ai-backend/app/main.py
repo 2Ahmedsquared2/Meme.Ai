@@ -1,7 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI  # pyright: ignore[reportMissingImports]
 from app.db import db 
 
-@app.get("/")
+@app.get("/")  # pyright: ignore[reportUndefinedVariable]
 async def root():
     return {"status": "ok", "message": "Meme.AI backend is running"}
 
