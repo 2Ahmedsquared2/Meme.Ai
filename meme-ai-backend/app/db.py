@@ -141,6 +141,8 @@ class User:
     #onboarding status
     onboarding_completed: bool = False
     onboarding_data: List[Dict] = field(default_factory=list)
+    quick_rating_completed: bool = False
+
 
     # User preferences
     preference_embedding: List[float] = field(default_factory=list)
@@ -172,6 +174,7 @@ class User:
             # Onboarding
             'onboarding_completed': self.onboarding_completed,
             'onboarding_data': self.onboarding_data,
+            'quick_rating_completed': self.quick_rating_completed,
             
             # Preferences
             'preference_embedding': self.preference_embedding,
