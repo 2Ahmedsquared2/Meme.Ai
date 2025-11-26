@@ -1,6 +1,5 @@
 from fastapi import FastAPI  # pyright: ignore[reportMissingImports]
 from db import db, User, Meme, create_user, get_user, update_user, create_meme, get_meme, update_meme, delete_meme
-from recommendation_engine import engine
 from fastapi.middleware.cors import CORSMiddleware  # pyright: ignore[reportMissingImports]
 from fastapi.responses import JSONResponse  # pyright: ignore[reportMissingImports]
 from fastapi import HTTPException, status  # pyright: ignore[reportMissingImports]
@@ -421,30 +420,6 @@ async def track_send(request: FavoriteRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/memes/suggest")
-async def suggest_memes(user_id: str, context: str = "", limit: int = 3):
-    """Get AI-powered meme suggestions based on context"""
-    try:
-        user = get_user(user_id)
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        
-        # Use recommendation engine
-        memes = engine.get_personalized_memes(
-            user_id=user_id,
-            limit=limit,
-            context_text=context if context else None
-        )
-        
-        return {"memes": memes, "count": len(memes)}
-    
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 
 # ==================== extra endpoints ====================
 @app.post("/memes/{meme_id}/approve")

@@ -34,7 +34,6 @@ class Meme:
     visual_tags: List[str] = field(default_factory=list)
     contextual_tags: List[str] = field(default_factory=list)
     blip2_caption: str = ""
-    clip_caption: str = ""
     clip_embedding: List[float] = field(default_factory=list)
     all_tags: List[str] = field(default_factory=list)
 
@@ -92,7 +91,6 @@ class Meme:
             'visual_tags': self.visual_tags,
             'contextual_tags': self.contextual_tags,
             'blip2_caption': self.blip2_caption,
-            'clip_caption': self.clip_caption,
             'all_tags': self.all_tags,
             'clip_embedding': self.clip_embedding,
             'created_at': self.created_at,
