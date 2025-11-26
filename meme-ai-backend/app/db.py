@@ -26,6 +26,7 @@ class Meme:
     """ Represents memes in the database """
     id: str
     image_url: str
+    image_hash: str = ""
     status: str = "approved"
 
     # Meme tagging system 
@@ -85,6 +86,7 @@ class Meme:
         return {
             'id': self.id,
             'image_url': self.image_url,
+            'image_hash': self.image_hash,
             'status': self.status,
             'user_tags': self.user_tags,
             'visual_tags': self.visual_tags,

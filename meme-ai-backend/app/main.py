@@ -6,6 +6,10 @@ from fastapi import HTTPException, status  # pyright: ignore[reportMissingImport
 from typing import Dict, List, Optional 
 from datetime import datetime
 from pydantic import BaseModel   # pyright: ignore[reportMissingImports]
+import imagehash
+from PIL import Image
+import requests
+from io import BytesIO
 
 app = FastAPI(
     title="Meme.AI Backend",
@@ -162,11 +166,27 @@ async def get_meme_endpoint(meme_id: str):
 
 @app.post("/memes")
 async def create_meme_endpoint(request: CreateMemeRequest):
-    """Upload a new meme"""
+    """Upload a new meme with duplicate detection"""
     try:        
+        # Download and hash the image
+        response = requests.get(request.image_url)
+        img = Image.open(BytesIO(response.content))
+        img_hash = str(imagehash.phash(img))
+        
+        # Check for exact duplicates
+        existing = db.collection('memes').where('image_hash', '==', img_hash).limit(1).get()
+        
+        if len(list(existing)) > 0:
+            raise HTTPException(
+                status_code=409, 
+                detail="This meme already exists in our database"
+            )
+        
+        # Create new meme with hash
         new_meme = Meme(
             id=request.id,
             image_url=request.image_url,
+            image_hash=img_hash,
             user_tags=request.user_tags,
             status="pending"  # Needs approval first!
         )
@@ -174,6 +194,8 @@ async def create_meme_endpoint(request: CreateMemeRequest):
         meme_id = create_meme(new_meme)
         return {"status": "success", "meme_id": meme_id}
     
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
