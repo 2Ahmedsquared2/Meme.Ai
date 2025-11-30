@@ -1,5 +1,5 @@
 import firebase_admin   # pyright: ignore[reportMissingImports]
-from firebase_admin import credentials, firestore  # pyright: ignore[reportMissingImports]
+from firebase_admin import credentials, firestore, storage  # pyright: ignore[reportMissingImports]
 import os
 from dataclasses import dataclass, field 
 from datetime import datetime 
@@ -16,10 +16,12 @@ print(f"🔍 Looking for credentials at: {cred_path}")
 
 cred = credentials.Certificate(cred_path)
 firebase_admin.initialize_app(cred, {
-    'projectId': 'get-meme-ai'
+    'projectId': 'get-meme-ai', 
+    'storageBucket': 'get-meme-ai.appspot.com'
 })
 
 db = firestore.client()
+bucket = storage.bucket()
 
 @dataclass 
 class Meme:
@@ -148,6 +150,12 @@ class User:
     preference_embedding: List[float] = field(default_factory=list)
     tag_affinities: Dict[str, float] = field(default_factory=dict)
 
+    #context patterns for rec engine 
+    context_patterns: List[Dict] = field(default_factory=list)
+    favorited_meme_ids: List[str] = field(default_factory=list)
+    context_interaction_count: int = 0
+
+
     #user stats 
     total_memes_sent: int = 0
     total_memes_favorited: int = 0
@@ -155,6 +163,11 @@ class User:
     total_memes_thumbed_down: int = 0
     total_memes_viewed: int = 0
     last_active_at: Optional[datetime] = None
+
+
+    # NEW: New meme exploration tracking
+    exploration_query_count: int = 0
+    next_exploration_at: int = 3  
     
 
     def to_dict(self) -> Dict:
@@ -175,6 +188,11 @@ class User:
             'onboarding_completed': self.onboarding_completed,
             'onboarding_data': self.onboarding_data,
             'quick_rating_completed': self.quick_rating_completed,
+
+            #context patterns for rec engine 
+            'context_patterns': self.context_patterns,
+            'favorited_meme_ids': self.favorited_meme_ids,
+            'context_interaction_count': self.context_interaction_count,
             
             # Preferences
             'preference_embedding': self.preference_embedding,
@@ -185,8 +203,45 @@ class User:
             'total_memes_favorited': self.total_memes_favorited,
             'total_memes_thumbed_up': self.total_memes_thumbed_up,
             'total_memes_thumbed_down': self.total_memes_thumbed_down,
-            'total_memes_viewed': self.total_memes_viewed
+            'total_memes_viewed': self.total_memes_viewed,
+
+            # NEW: New meme exploration tracking
+            'exploration_query_count': self.exploration_query_count,
+            'next_exploration_at': self.next_exploration_at,
         }
+
+@dataclass
+class GlobalContextPattern:
+    """
+    Global context patterns learned from ALL users
+    Used for cold-start recommendations for new users
+    """
+    context_text:str
+    context_embedding: List[float]
+    successful_meme_ids: List[str]
+    common_tags: List[str]
+    average_embedding: List[float]
+    total_successes: int = 0
+    total_attempts: int = 0
+    success_rate: float = 0.0
+    last_updated: datetime = field(default_factory=datetime.now)
+
+    def to_dict(self) -> Dict:
+        """Convert to Firestore-compatible dictionary"""
+        return {
+            'context_text': self.context_text,
+            'context_embedding': self.context_embedding,
+            'successful_meme_ids': self.successful_meme_ids,
+            'common_tags': self.common_tags,
+            'average_embedding': self.average_embedding,
+            'total_successes': self.total_successes,
+            'total_attempts': self.total_attempts,
+            'success_rate': self.success_rate,
+            'last_updated': self.last_updated
+        }
+
+
+
 
 
 
@@ -297,6 +352,25 @@ def delete_user(user_id: str) -> None:
     db.collection('users').document(user_id).delete()
     print(f"🗑️ User deleted successfully with ID: {user_id}")
 
+# MEME STORAGE FUNCTIONS
+def upload_image_to_storage(file_bytes: bytes, filename: str) -> str:
+    """
+    Upload an image to Firebase Storage
+    Returns the public URL of the uploaded image
+    """
+    #uploads the file bytes
+    blob = bucket.blob(f"memes/{filename}")
+
+    #upload the file bytes
+    blob.upload_from_string(file_bytes, content_type='image/jpeg')
+    
+    #makes blob publicly 
+    blob.make_public()
+
+    #return the public url
+    return blob.public_url
+     
+    
 
 
 
