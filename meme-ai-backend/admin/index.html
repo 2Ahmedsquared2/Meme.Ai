@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meme.AI Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f7;
+            color: #1d1d1f;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            padding: 20px 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            border-radius: 12px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .nav-tab {
+            padding: 12px 24px;
+            background: #f5f5f7;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-tab:hover {
+            background: #e5e5e7;
+        }
+
+        .nav-tab.active {
+            background: #007aff;
+            color: white;
+        }
+
+        .page {
+            display: none;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+
+        .card h2 {
+            font-size: 22px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #333;
+        }
+
+        input[type="text"],
+        input[type="url"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #d2d2d7;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border 0.2s;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #007aff;
+        }
+
+        button {
+            background: #007aff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #0051d5;
+        }
+
+        button.secondary {
+            background: #f5f5f7;
+            color: #1d1d1f;
+        }
+
+        button.secondary:hover {
+            background: #e5e5e7;
+        }
+
+        button.danger {
+            background: #ff3b30;
+        }
+
+        button.danger:hover {
+            background: #d32f2f;
+        }
+
+        button.success {
+            background: #34c759;
+        }
+
+        button.success:hover {
+            background: #28a745;
+        }
+
+        .meme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .meme-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            transition: transform 0.2s;
+        }
+
+        .meme-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+        }
+
+        .meme-image {
+            width: 100%;
+            height: 250px;
+            object-fit: cover;
+            background: #f5f5f7;
+        }
+
+        .meme-content {
+            padding: 20px;
+        }
+
+        .meme-id {
+            font-size: 12px;
+            color: #86868b;
+            margin-bottom: 10px;
+        }
+
+        .meme-stats {
+            display: flex;
+            gap: 15px;
+            margin: 15px 0;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .meme-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin: 15px 0;
+        }
+
+        .tag {
+            background: #f5f5f7;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .tag.user-tag {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .tag.ml-tag {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .tag-remove {
+            cursor: pointer;
+            font-weight: bold;
+            color: #666;
+        }
+
+        .tag-remove:hover {
+            color: #ff3b30;
+        }
+
+        .meme-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .meme-actions button {
+            flex: 1;
+            padding: 10px;
+            font-size: 14px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status-approved {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-rejected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #86868b;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .add-tag-section {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .add-tag-section input {
+            flex: 1;
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .filters select {
+            width: auto;
+            min-width: 150px;
+        }
+
+        #apiUrl {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎭 Meme.AI Admin Panel</h1>
+            <p>Manage memes and tags</p>
+            <div class="nav-tabs">
+                <button class="nav-tab active" onclick="switchTab('tag-management')">Tag Management</button>
+                <button class="nav-tab" onclick="switchTab('meme-moderation')">Meme Moderation</button>
+            </div>
+        </div>
+
+        <!-- API Configuration -->
+        <div class="card">
+            <div class="form-group">
+                <label>API Base URL</label>
+                <input type="url" id="apiUrl" value="http://localhost:8000" placeholder="http://localhost:8000">
+            </div>
+        </div>
+
+        <!-- Tag Management Page -->
+        <div id="tag-management" class="page active">
+            <div class="card">
+                <h2>📋 Tag Management</h2>
+                
+                <div class="form-group">
+                    <label>Select Meme to Edit Tags</label>
+                    <select id="memeSelect" onchange="loadMemeForTagging()">
+                        <option value="">-- Select a meme --</option>
+                    </select>
+                </div>
+
+                <div id="tagEditorSection" style="display: none;">
+                    <div id="memePreview" style="margin: 20px 0;">
+                        <img id="previewImage" style="max-width: 400px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    </div>
+
+                    <div class="form-group">
+                        <label>ML Generated Tags (Auto-tagged)</label>
+                        <div id="mlTags" class="meme-tags"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>User Tags (Manual)</label>
+                        <div id="userTags" class="meme-tags"></div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Add New Tag</label>
+                        <div class="add-tag-section">
+                            <input type="text" id="newTag" placeholder="Enter new tag..." onkeypress="if(event.key==='Enter') addTag()">
+                            <button onclick="addTag()">Add Tag</button>
+                        </div>
+                    </div>
+
+                    <div class="meme-actions">
+                        <button class="success" onclick="saveTagChanges()">💾 Save Changes</button>
+                        <button class="secondary" onclick="cancelTagEditing()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Meme Moderation Page -->
+        <div id="meme-moderation" class="page">
+            <div class="card">
+                <h2>🗑️ Meme Moderation</h2>
+                
+                <div class="filters">
+                    <select id="statusFilter" onchange="loadMemes()">
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                    <button onclick="loadMemes()">🔄 Refresh</button>
+                </div>
+
+                <div id="memeGrid" class="meme-grid">
+                    <div class="loading">Loading memes...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentMeme = null;
+        let allMemes = [];
+        let mlTags = [];
+        let userTags = [];
+
+        function getApiUrl() {
+            return document.getElementById('apiUrl').value;
+        }
+
+        function switchTab(tabId) {
+            // Update tab buttons
+            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update pages
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+
+            // Load data for the tab
+            if (tabId === 'tag-management') {
+                loadMemesForTagging();
+            } else if (tabId === 'meme-moderation') {
+                loadMemes();
+            }
+        }
+
+        // ============ TAG MANAGEMENT ============
+
+        async function loadMemesForTagging() {
+            try {
+                const response = await fetch(`${getApiUrl()}/memes?limit=100&status=approved`);
+                const data = await response.json();
+                
+                const select = document.getElementById('memeSelect');
+                select.innerHTML = '<option value="">-- Select a meme --</option>';
+                
+                data.memes.forEach(meme => {
+                    const option = document.createElement('option');
+                    option.value = meme.id;
+                    option.textContent = `${meme.id} (${meme.all_tags?.length || 0} tags)`;
+                    select.appendChild(option);
+                });
+
+                allMemes = data.memes;
+            } catch (error) {
+                showError('Failed to load memes: ' + error.message);
+            }
+        }
+
+        async function loadMemeForTagging() {
+            const memeId = document.getElementById('memeSelect').value;
+            if (!memeId) {
+                document.getElementById('tagEditorSection').style.display = 'none';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${getApiUrl()}/memes/${memeId}`);
+                currentMeme = await response.json();
+
+                // Show editor
+                document.getElementById('tagEditorSection').style.display = 'block';
+
+                // Show image
+                document.getElementById('previewImage').src = currentMeme.image_url;
+
+                // Separate ML and user tags
+                mlTags = [...(currentMeme.visual_tags || []), ...(currentMeme.contextual_tags || [])];
+                userTags = [...(currentMeme.user_tags || [])];
+
+                renderTags();
+            } catch (error) {
+                showError('Failed to load meme: ' + error.message);
+            }
+        }
+
+        function renderTags() {
+            // Render ML tags
+            const mlContainer = document.getElementById('mlTags');
+            mlContainer.innerHTML = mlTags.map(tag => `
+                <span class="tag ml-tag">
+                    ${tag}
+                    <span class="tag-remove" onclick="removeMLTag('${tag}')">×</span>
+                </span>
+            `).join('');
+
+            // Render user tags
+            const userContainer = document.getElementById('userTags');
+            userContainer.innerHTML = userTags.map(tag => `
+                <span class="tag user-tag">
+                    ${tag}
+                    <span class="tag-remove" onclick="removeUserTag('${tag}')">×</span>
+                </span>
+            `).join('');
+        }
+
+        function removeMLTag(tag) {
+            mlTags = mlTags.filter(t => t !== tag);
+            renderTags();
+        }
+
+        function removeUserTag(tag) {
+            userTags = userTags.filter(t => t !== tag);
+            renderTags();
+        }
+
+        function addTag() {
+            const input = document.getElementById('newTag');
+            const tag = input.value.trim().toLowerCase();
+            
+            if (!tag) return;
+            
+            if (userTags.includes(tag) || mlTags.includes(tag)) {
+                showError('Tag already exists');
+                return;
+            }
+
+            userTags.push(tag);
+            input.value = '';
+            renderTags();
+        }
+
+        async function saveTagChanges() {
+            if (!currentMeme) return;
+
+            try {
+                // Reconstruct all_tags
+                const allTags = [...new Set([...mlTags, ...userTags])];
+
+                // Update meme in database
+                const response = await fetch(`${getApiUrl()}/memes/${currentMeme.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        visual_tags: currentMeme.visual_tags.filter(t => mlTags.includes(t)),
+                        contextual_tags: currentMeme.contextual_tags.filter(t => mlTags.includes(t)),
+                        user_tags: userTags,
+                        all_tags: allTags
+                    })
+                });
+
+                if (response.ok) {
+                    showSuccess('Tags updated successfully!');
+                    cancelTagEditing();
+                } else {
+                    showError('Failed to update tags');
+                }
+            } catch (error) {
+                showError('Error saving tags: ' + error.message);
+            }
+        }
+
+        function cancelTagEditing() {
+            document.getElementById('memeSelect').value = '';
+            document.getElementById('tagEditorSection').style.display = 'none';
+            document.getElementById('newTag').value = '';
+            currentMeme = null;
+        }
+
+        // ============ MEME MODERATION ============
+
+        async function loadMemes() {
+            const grid = document.getElementById('memeGrid');
+            grid.innerHTML = '<div class="loading">Loading memes...</div>';
+
+            try {
+                const status = document.getElementById('statusFilter').value;
+                const url = status === 'all' 
+                    ? `${getApiUrl()}/memes?limit=100&status=approved`
+                    : `${getApiUrl()}/memes?limit=100&status=${status}`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (data.memes.length === 0) {
+                    grid.innerHTML = '<div class="loading">No memes found</div>';
+                    return;
+                }
+
+                grid.innerHTML = data.memes.map(meme => `
+                    <div class="meme-card" id="meme-${meme.id}">
+                        <img class="meme-image" src="${meme.image_url}" alt="Meme">
+                        <div class="meme-content">
+                            <div class="meme-id">${meme.id}</div>
+                            <span class="status-badge status-${meme.status}">${meme.status}</span>
+                            
+                            <div class="meme-stats">
+                                <span>👁️ ${meme.total_views || 0}</span>
+                                <span>👍 ${meme.total_thumbs_up || 0}</span>
+                                <span>👎 ${meme.total_thumbs_down || 0}</span>
+                                <span>⭐ ${meme.total_favorites || 0}</span>
+                            </div>
+
+                            <div class="meme-tags">
+                                ${(meme.all_tags || []).slice(0, 5).map(tag => 
+                                    `<span class="tag">${tag}</span>`
+                                ).join('')}
+                                ${meme.all_tags?.length > 5 ? `<span class="tag">+${meme.all_tags.length - 5} more</span>` : ''}
+                            </div>
+
+                            <div class="meme-actions">
+                                ${meme.status !== 'approved' ? 
+                                    `<button class="success" onclick="approveMeme('${meme.id}')">✓ Approve</button>` : ''}
+                                ${meme.status !== 'rejected' ? 
+                                    `<button class="danger" onclick="rejectMeme('${meme.id}')">✗ Reject</button>` : ''}
+                                <button class="danger" onclick="deleteMeme('${meme.id}')">🗑️ Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                grid.innerHTML = `<div class="error">Failed to load memes: ${error.message}</div>`;
+            }
+        }
+
+        async function approveMeme(memeId) {
+            if (!confirm('Approve this meme?')) return;
+
+            try {
+                const response = await fetch(`${getApiUrl()}/memes/${memeId}/approve`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    showSuccess('Meme approved!');
+                    loadMemes();
+                } else {
+                    showError('Failed to approve meme');
+                }
+            } catch (error) {
+                showError('Error: ' + error.message);
+            }
+        }
+
+        async function rejectMeme(memeId) {
+            if (!confirm('Reject this meme?')) return;
+
+            try {
+                const response = await fetch(`${getApiUrl()}/memes/${memeId}/reject`, {
+                    method: 'POST'
+                });
+
+                if (response.ok) {
+                    showSuccess('Meme rejected!');
+                    loadMemes();
+                } else {
+                    showError('Failed to reject meme');
+                }
+            } catch (error) {
+                showError('Error: ' + error.message);
+            }
+        }
+
+        async function deleteMeme(memeId) {
+            if (!confirm('⚠️ PERMANENTLY DELETE this meme? This cannot be undone!')) return;
+
+            try {
+                const response = await fetch(`${getApiUrl()}/memes/${memeId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    showSuccess('Meme deleted permanently!');
+                    document.getElementById(`meme-${memeId}`).remove();
+                } else {
+                    showError('Failed to delete meme');
+                }
+            } catch (error) {
+                showError('Error: ' + error.message);
+            }
+        }
+
+        // ============ UTILITIES ============
+
+        function showError(message) {
+            alert('❌ ' + message);
+        }
+
+        function showSuccess(message) {
+            alert('✅ ' + message);
+        }
+
+        // Load initial data
+        window.onload = () => {
+            loadMemesForTagging();
+        };
+    </script>
+</body>
+</html>
+

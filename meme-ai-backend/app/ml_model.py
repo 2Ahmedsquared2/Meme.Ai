@@ -217,3 +217,29 @@ def auto_tag_meme(image_url: str) -> Dict:
         "blip2_caption": caption,
         "all_tags": visual_tags + list(set(all_contextual_tags))
     }
+
+
+def extract_context_tags(context: str) -> List[str]:
+    """
+    Extract relevant tags from user's text context
+    Simple keyword extraction for now
+    
+    Args:
+        context: User's text input (e.g., "stressed about work deadlines")
+    
+    Returns:
+        List of extracted tags/keywords
+    """
+    # Simple keyword extraction (can be improved with NLP later)
+    keywords = context.lower().split()
+    
+    # Remove common stop words
+    stop_words = {'i', 'me', 'my', 'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 
+                  'of', 'with', 'by', 'from', 'about', 'as', 'is', 'was', 'are', 'been', 'be', 'have', 
+                  'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'this', 'that',
+                  'when', 'where', 'why', 'how', 'what', 'which', 'who', 'whom'}
+    
+    tags = [word.strip('.,!?;:') for word in keywords if word not in stop_words and len(word) > 2]
+    
+    return tags[:10]  # Return top 10 keywords
+
