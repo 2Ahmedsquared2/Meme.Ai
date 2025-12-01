@@ -76,6 +76,89 @@ def get_text_similarity(image_url: str, text_options: List[str]) -> Dict[str, fl
         print(f"Error: {e}")
         return {}
 
+# ==================== TAG DEFINITIONS ====================
+
+# VISUAL TAGS
+VISUAL_TYPE_OPTIONS = [
+    "portrait photo", "landscape photo", "screenshot", "illustration",
+    "cartoon", "digital art", "stock photo", "selfie", "comic panel",
+    "text-heavy meme", "minimal text", "no text",
+    "caption at top", "caption at bottom", "text overlay", "speech bubble",
+    "black and white", "colorful", "dark themed", "bright themed"
+]
+
+VISUAL_PEOPLE_OPTIONS = [
+    "no people", "one person", "two people", "group of people", "crowd",
+    "woman", "man", "child", "elderly person", "celebrity", "influencer",
+    "cartoon character", "animal character",
+    "animal", "cat", "dog", "car", "food", "computer", "phone",
+    "nature scenery", "urban environment"
+]
+
+VISUAL_ACTION_OPTIONS = [
+    "running", "crying", "laughing", "yelling", "pointing",
+    "sleeping", "dancing", "arguing", "smiling", "facepalm",
+    "looking away", "staring", "shocked face", "side glance",
+    "making a choice", "comparing two things", "multiple people interacting",
+    "zoomed-in face"
+]
+
+VISUAL_FORMAT_OPTIONS = [
+    "two-panel", "three-panel", "four-panel", "side-by-side comparison",
+    "before and after", "expectation vs reality", "text message screenshot",
+    "choice comparison", "ascending levels", "descending quality",
+    "approval rejection", "reaction image", "emoji visible",
+    "Drake meme", "distracted boyfriend", "expanding brain",
+    "guy looking back", "woman yelling at cat",
+    "Batman slapping", "Success Kid", "Harold"
+]
+
+# CONTEXTUAL TAGS
+EMOTION_OPTIONS = [
+    "happy", "sad", "angry", "confused", "shocked", "disgusted",
+    "tired", "excited", "bored", "anxious", "proud", "embarrassed",
+    "nervous", "uncomfortable", "smug", "mocking", "judging",
+    "surprised", "frustrated", "relieved", "scared", "confident",
+    "awkward", "guilty"
+]
+
+VIBE_OPTIONS = [
+    "funny", "wholesome", "relatable", "sarcastic", "ironic",
+    "dark humor", "absurd", "cursed", "blessed", "chaotic",
+    "celebration", "disappointment", "approval", "rejection",
+    "realization", "facepalm", "cringe",
+    "sassy", "passive aggressive", "dry humor",
+    "dramatic", "overreacting", "underreacting",
+    "delusional confidence", "defensive", "playful teasing",
+    "joking insult", "self roast"
+]
+
+SITUATION_OPTIONS = [
+    "being called out", "exposed", "caught lying",
+    "panic moment", "embarrassing mistake", "miscommunication",
+    "failure", "success moment", "unexpected twist",
+    "overthinking", "procrastinating", "trying your best",
+    "responsibility avoidance",
+    "distracted", "tempted", "caught looking", "wandering eyes",
+    "choosing between options", "torn between two things", "can't decide",
+    "jealous partner", "side eye", "unfaithful", "comparing",
+    "grass is greener", "FOMO", "regret", "what if",
+    "monday mood", "friday feeling", "2am thoughts", "existential crisis"
+]
+
+SOCIAL_OPTIONS = [
+    "work meme", "school meme", "relationship meme", "friendship meme",
+    "family meme", "internet culture", "gaming meme", "sports meme",
+    "best friends", "siblings", "crush", "dating",
+    "teammates", "coworkers", "group chat",
+    "parents vs kids", "teacher vs student",
+    "adulting struggles", "social anxiety", "introvert problems", "extrovert energy",
+    "chronically online", "video call awkwardness",
+    "gen z humor", "millennial humor",
+    "classic meme", "reaction image", "text meme", "tweet meme",
+    "relatable pain", "motivational", "coping humor"
+]
+
 # ==================== COMPLETE AUTO-TAGGING SYSTEM ====================
 
 def auto_tag_meme(image_url: str) -> Dict:
@@ -85,123 +168,33 @@ def auto_tag_meme(image_url: str) -> Dict:
     Returns visual tags, contextual tags, and caption
     """
     
-    # === VISUAL TAGS - SPLIT INTO 4 SMALLER GROUPS ===
-    
-    # VISUAL GROUP 1: IMAGE TYPE & TEXT (20 tags)
-    visual_type_options = [
-        "portrait photo", "landscape photo", "screenshot", "illustration",
-        "cartoon", "digital art", "stock photo", "selfie", "comic panel",
-        "text-heavy meme", "minimal text", "no text",
-        "caption at top", "caption at bottom", "text overlay", "speech bubble",
-        "black and white", "colorful", "dark themed", "bright themed"
-    ]
-    
-    visual_type_scores = get_text_similarity(image_url, visual_type_options)
+    # === VISUAL TAGS ===
+    visual_type_scores = get_text_similarity(image_url, VISUAL_TYPE_OPTIONS)
     visual_type_tags = [tag for tag, score in visual_type_scores.items() if score > 0.25]
     
-    # VISUAL GROUP 2: PEOPLE & SUBJECTS (21 tags)
-    visual_people_options = [
-        "no people", "one person", "two people", "group of people", "crowd",
-        "woman", "man", "child", "elderly person", "celebrity", "influencer",
-        "cartoon character", "animal character",
-        "animal", "cat", "dog", "car", "food", "computer", "phone",
-        "nature scenery", "urban environment"
-    ]
-    
-    visual_people_scores = get_text_similarity(image_url, visual_people_options)
+    visual_people_scores = get_text_similarity(image_url, VISUAL_PEOPLE_OPTIONS)
     visual_people_tags = [tag for tag, score in visual_people_scores.items() if score > 0.25]
     
-    # VISUAL GROUP 3: ACTIONS & EXPRESSIONS (18 tags)
-    visual_action_options = [
-        "running", "crying", "laughing", "yelling", "pointing",
-        "sleeping", "dancing", "arguing", "smiling", "facepalm",
-        "looking away", "staring", "shocked face", "side glance",
-        "making a choice", "comparing two things", "multiple people interacting",
-        "zoomed-in face"
-    ]
-    
-    visual_action_scores = get_text_similarity(image_url, visual_action_options)
+    visual_action_scores = get_text_similarity(image_url, VISUAL_ACTION_OPTIONS)
     visual_action_tags = [tag for tag, score in visual_action_scores.items() if score > 0.25]
     
-    # VISUAL GROUP 4: MEME FORMATS (21 tags)
-    visual_format_options = [
-        "two-panel", "three-panel", "four-panel", "side-by-side comparison",
-        "before and after", "expectation vs reality", "text message screenshot",
-        "choice comparison", "ascending levels", "descending quality",
-        "approval rejection", "reaction image", "emoji visible",
-        # Popular specific formats
-        "Drake meme", "distracted boyfriend", "expanding brain",
-        "guy looking back", "woman yelling at cat",
-        "Batman slapping", "Success Kid", "Harold"
-    ]
-    
-    visual_format_scores = get_text_similarity(image_url, visual_format_options)
+    visual_format_scores = get_text_similarity(image_url, VISUAL_FORMAT_OPTIONS)
     visual_format_tags = [tag for tag, score in visual_format_scores.items() if score > 0.25]
     
     # Combine all visual tags
     visual_tags = visual_type_tags + visual_people_tags + visual_action_tags + visual_format_tags
     
-    # === CONTEXTUAL TAGS - SPLIT INTO 4 SMALLER GROUPS ===
-    
-    # CONTEXT GROUP 1: CORE EMOTIONS (24 tags)
-    emotion_options = [
-        "happy", "sad", "angry", "confused", "shocked", "disgusted",
-        "tired", "excited", "bored", "anxious", "proud", "embarrassed",
-        "nervous", "uncomfortable", "smug", "mocking", "judging",
-        "surprised", "frustrated", "relieved", "scared", "confident",
-        "awkward", "guilty"
-    ]
-    
-    emotion_scores = get_text_similarity(image_url, emotion_options)
+    # === CONTEXTUAL TAGS ===
+    emotion_scores = get_text_similarity(image_url, EMOTION_OPTIONS)
     emotion_tags = [tag for tag, score in emotion_scores.items() if score > 0.15]
     
-    # CONTEXT GROUP 2: MOODS & VIBES (28 tags)
-    vibe_options = [
-        "funny", "wholesome", "relatable", "sarcastic", "ironic",
-        "dark humor", "absurd", "cursed", "blessed", "chaotic",
-        "celebration", "disappointment", "approval", "rejection",
-        "realization", "facepalm", "cringe",
-        "sassy", "passive aggressive", "dry humor",
-        "dramatic", "overreacting", "underreacting",
-        "delusional confidence", "defensive", "playful teasing",
-        "joking insult", "self roast"
-    ]
-    
-    vibe_scores = get_text_similarity(image_url, vibe_options)
+    vibe_scores = get_text_similarity(image_url, VIBE_OPTIONS)
     vibe_tags = [tag for tag, score in vibe_scores.items() if score > 0.15]
     
-    # CONTEXT GROUP 3: SITUATIONS & STATES (32 tags)
-    situation_options = [
-        "being called out", "exposed", "caught lying",
-        "panic moment", "embarrassing mistake", "miscommunication",
-        "failure", "success moment", "unexpected twist",
-        "overthinking", "procrastinating", "trying your best",
-        "responsibility avoidance",
-        "distracted", "tempted", "caught looking", "wandering eyes",
-        "choosing between options", "torn between two things", "can't decide",
-        "jealous partner", "side eye", "unfaithful", "comparing",
-        "grass is greener", "FOMO", "regret", "what if",
-        "monday mood", "friday feeling", "2am thoughts", "existential crisis"
-    ]
-    
-    situation_scores = get_text_similarity(image_url, situation_options)
+    situation_scores = get_text_similarity(image_url, SITUATION_OPTIONS)
     situation_tags = [tag for tag, score in situation_scores.items() if score > 0.15]
     
-    # CONTEXT GROUP 4: SOCIAL CONTEXTS & CATEGORIES (32 tags)
-    social_options = [
-        "work meme", "school meme", "relationship meme", "friendship meme",
-        "family meme", "internet culture", "gaming meme", "sports meme",
-        "best friends", "siblings", "crush", "dating",
-        "teammates", "coworkers", "group chat",
-        "parents vs kids", "teacher vs student",
-        "adulting struggles", "social anxiety", "introvert problems", "extrovert energy",
-        "chronically online", "video call awkwardness",
-        "gen z humor", "millennial humor",
-        "classic meme", "reaction image", "text meme", "tweet meme",
-        "relatable pain", "motivational", "coping humor"
-    ]
-    
-    social_scores = get_text_similarity(image_url, social_options)
+    social_scores = get_text_similarity(image_url, SOCIAL_OPTIONS)
     social_tags = [tag for tag, score in social_scores.items() if score > 0.15]
     
     # === COMBINE ALL CONTEXTUAL TAGS ===
@@ -217,3 +210,21 @@ def auto_tag_meme(image_url: str) -> Dict:
         "blip2_caption": caption,
         "all_tags": visual_tags + list(set(all_contextual_tags))
     }
+
+
+def extract_context_tags(context: str) -> List[str]:
+    """
+    Pull keywords from user text for matching
+    e.g. "stressed about work" -> ["stressed", "work"]
+    """
+    keywords = context.lower().split()
+    
+    # filter out common words
+    stop_words = {'i', 'me', 'my', 'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 
+                  'of', 'with', 'by', 'from', 'about', 'as', 'is', 'was', 'are', 'been', 'be', 'have', 
+                  'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'this', 'that',
+                  'when', 'where', 'why', 'how', 'what', 'which', 'who', 'whom'}
+    
+    tags = [word.strip('.,!?;:') for word in keywords if word not in stop_words and len(word) > 2]
+    
+    return tags[:10]
