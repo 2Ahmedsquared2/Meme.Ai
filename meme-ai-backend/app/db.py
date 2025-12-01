@@ -28,6 +28,7 @@ class Meme:
     """ Represents memes in the database """
     id: str
     image_url: str
+    firebase_image_url: Optional[str] = None
     image_hash: str = ""
     status: str = "approved"
 
@@ -41,6 +42,7 @@ class Meme:
 
     # timestamps
     created_at: datetime = field(default_factory=datetime.now)
+    upload_time: Optional[datetime] = None
     approved_at: Optional[datetime] = None
 
     # RL variables (using for thompson sampling)
@@ -49,6 +51,7 @@ class Meme:
 
     # Meme engagement stats
     total_sends: int = 0
+    total_likes: int = 0
     total_favorites: int = 0
     total_thumbs_up: int = 0
     total_thumbs_down: int = 0
@@ -87,6 +90,7 @@ class Meme:
         return {
             'id': self.id,
             'image_url': self.image_url,
+            'firebase_image_url': self.firebase_image_url,
             'image_hash': self.image_hash,
             'status': self.status,
             'user_tags': self.user_tags,
@@ -96,10 +100,12 @@ class Meme:
             'all_tags': self.all_tags,
             'clip_embedding': self.clip_embedding,
             'created_at': self.created_at,
+            'upload_time': self.upload_time,
             'approved_at': self.approved_at,
             'base_alpha': self.base_alpha,
             'base_beta': self.base_beta,
             'total_sends': self.total_sends,
+            'total_likes': self.total_likes,
             'total_favorites': self.total_favorites,
             'total_thumbs_up': self.total_thumbs_up,
             'total_thumbs_down': self.total_thumbs_down,

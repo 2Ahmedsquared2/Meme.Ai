@@ -1,10 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meme.AI Admin Panel</title>
+    <title>Meme.AI Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            /* Dark Mode Theme */
+            --bg: #000000;
+            --card-bg: #1C1C1E;
+            --card-hover: #2C2C2E;
+            --text-primary: #FFFFFF;
+            --text-secondary: #8E8E93;
+            --border: #38383A;
+
+            --primary: #0A84FF;
+            --primary-hover: #0071E3;
+            --danger: #FF453A;
+            --danger-hover: #D70015;
+            --success: #30D158;
+            --success-hover: #248A3D;
+
+            --radius: 12px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -12,687 +36,1456 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: #f5f5f7;
-            color: #1d1d1f;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            background: white;
-            padding: 20px 40px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-            border-radius: 12px;
-        }
-
-        .header h1 {
-            font-size: 28px;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-
-        .nav-tabs {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text-primary);
+            height: 100vh;
             display: flex;
-            gap: 10px;
-            margin-top: 20px;
+            flex-direction: column;
+            overflow: hidden;
         }
 
-        .nav-tab {
-            padding: 12px 24px;
-            background: #f5f5f7;
-            border: none;
-            border-radius: 8px;
+        /* Navigation */
+        .navbar {
+            background: rgba(28, 28, 30, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            padding: 0 24px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 100;
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+        }
+
+        .nav-item {
             cursor: pointer;
-            font-size: 15px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 14px;
             font-weight: 500;
+            color: var(--text-secondary);
             transition: all 0.2s;
         }
 
-        .nav-tab:hover {
-            background: #e5e5e7;
+        .nav-item:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.1);
         }
 
-        .nav-tab.active {
-            background: #007aff;
-            color: white;
+        .nav-item.active {
+            color: var(--primary);
+            background: rgba(10, 132, 255, 0.15);
         }
 
-        .page {
-            display: none;
-        }
-
-        .page.active {
-            display: block;
-        }
-
-        .card {
-            background: white;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            margin-bottom: 20px;
-        }
-
-        .card h2 {
-            font-size: 22px;
-            font-weight: 600;
-            margin-bottom: 20px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            font-weight: 500;
-            margin-bottom: 8px;
-            font-size: 14px;
-            color: #333;
-        }
-
-        input[type="text"],
-        input[type="url"],
-        select {
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            max-width: 1400px;
+            margin: 0 auto;
             width: 100%;
-            padding: 12px;
-            border: 1px solid #d2d2d7;
-            border-radius: 8px;
-            font-size: 15px;
-            transition: border 0.2s;
         }
 
-        input:focus,
-        select:focus {
-            outline: none;
-            border-color: #007aff;
+        /* Views */
+        .view {
+            display: none;
+            height: 100%;
         }
 
-        button {
-            background: #007aff;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.2s;
+        .view.active {
+            display: flex;
+            flex-direction: column;
         }
 
-        button:hover {
-            background: #0051d5;
-        }
-
-        button.secondary {
-            background: #f5f5f7;
-            color: #1d1d1f;
-        }
-
-        button.secondary:hover {
-            background: #e5e5e7;
-        }
-
-        button.danger {
-            background: #ff3b30;
-        }
-
-        button.danger:hover {
-            background: #d32f2f;
-        }
-
-        button.success {
-            background: #34c759;
-        }
-
-        button.success:hover {
-            background: #28a745;
-        }
-
-        .meme-grid {
+        /* Pending View Layout */
+        .pending-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
+            grid-template-columns: 1fr 600px;
+            /* Increased width for controls */
+            gap: 24px;
+            height: 100%;
+            max-height: 800px;
         }
 
-        .meme-card {
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
-            transition: transform 0.2s;
-        }
-
-        .meme-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+        .image-section {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            position: relative;
         }
 
         .meme-image {
             width: 100%;
-            height: 250px;
-            object-fit: cover;
-            background: #f5f5f7;
+            height: 100%;
+            object-fit: contain;
+            border-radius: 8px;
         }
 
-        .meme-content {
-            padding: 20px;
-        }
-
-        .meme-id {
-            font-size: 12px;
-            color: #86868b;
-            margin-bottom: 10px;
-        }
-
-        .meme-stats {
+        .controls-section {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            padding: 24px;
             display: flex;
-            gap: 15px;
-            margin: 15px 0;
-            font-size: 13px;
-            color: #666;
+            flex-direction: column;
+            gap: 20px;
+            overflow-y: auto;
         }
 
-        .meme-tags {
+        /* Tag Groups */
+        .tag-group {
+            margin-bottom: 16px;
+        }
+
+        .tag-group-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .tags-container {
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
-            margin: 15px 0;
+            gap: 8px;
         }
 
         .tag {
-            background: #f5f5f7;
-            padding: 6px 12px;
+            font-size: 13px;
+            padding: 6px 10px;
             border-radius: 6px;
-            font-size: 12px;
             display: inline-flex;
             align-items: center;
             gap: 6px;
+            cursor: default;
+            transition: all 0.2s;
+            border: 1px solid transparent;
         }
 
-        .tag.user-tag {
-            background: #e3f2fd;
-            color: #1976d2;
+        /* Adjusted Tag Colors for Dark Mode */
+        .tag-visual {
+            background: rgba(255, 149, 0, 0.15);
+            color: #FF9F0A;
+            border-color: rgba(255, 149, 0, 0.3);
         }
 
-        .tag.ml-tag {
-            background: #fff3e0;
-            color: #f57c00;
+        .tag-context {
+            background: rgba(191, 90, 242, 0.15);
+            color: #BF5AF2;
+            border-color: rgba(191, 90, 242, 0.3);
+        }
+
+        .tag-user {
+            background: rgba(10, 132, 255, 0.15);
+            color: #0A84FF;
+            border-color: rgba(10, 132, 255, 0.3);
         }
 
         .tag-remove {
             cursor: pointer;
+            opacity: 0.6;
             font-weight: bold;
-            color: #666;
+            padding: 0 2px;
         }
 
         .tag-remove:hover {
-            color: #ff3b30;
+            opacity: 1;
+            color: var(--danger);
         }
 
-        .meme-actions {
+        /* Inputs */
+        .input-group {
             display: flex;
-            gap: 10px;
-            margin-top: 15px;
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        .meme-actions button {
+        input[type="text"] {
             flex: 1;
-            padding: 10px;
+            padding: 10px 12px;
+            background: #2C2C2E;
+            border: 1px solid var(--border);
+            color: white;
+            border-radius: 8px;
             font-size: 14px;
+            font-family: inherit;
         }
 
-        .status-badge {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 6px;
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .preset-pool {
+            max-height: 150px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            background: #2C2C2E;
+        }
+
+        .preset-tag {
             font-size: 12px;
+            padding: 4px 8px;
+            background: #3A3A3C;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .preset-tag:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: #48484A;
+        }
+
+        /* Actions */
+        .action-bar {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid var(--border);
+        }
+
+        .btn {
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: var(--danger-hover);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: var(--success-hover);
+        }
+
+        .btn-secondary {
+            background: #3A3A3C;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #48484A;
+        }
+
+        .btn-full {
+            grid-column: span 2;
+        }
+
+        /* Approved Grid & Filter */
+        .filter-section {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            margin-bottom: 24px;
+        }
+
+        /* Category Buttons & Dropdowns */
+        .category-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .category-btn-wrapper {
+            position: relative;
+        }
+
+        .category-btn {
+            padding: 8px 16px;
+            background: #2C2C2E;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: white;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .category-btn:hover,
+        .category-btn.active {
+            border-color: var(--primary);
+            background: #3A3A3C;
+        }
+
+        .category-btn::after {
+            content: '▼';
+            font-size: 8px;
+            opacity: 0.6;
+        }
+
+        .category-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 8px;
+            background: #1C1C1E;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px;
+            width: 250px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 500;
+            display: none;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .category-dropdown.show {
+            display: block;
+        }
+
+        .dropdown-item {
+            padding: 8px 12px;
+            font-size: 13px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .dropdown-item:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .suggested-tags-area {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+            padding: 12px;
+            background: #1C1C1E;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .active-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+            min-height: 32px;
+            /* Prevent layout jump */
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .filter-tag {
+            background: var(--primary);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 24px;
+            padding-bottom: 40px;
+        }
+
+        .meme-card {
+            background: var(--card-bg);
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .meme-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            background: var(--card-hover);
+        }
+
+        .card-img {
+            height: 200px;
+            width: 100%;
+            object-fit: cover;
+            background: #2C2C2E;
+        }
+
+        .card-body {
+            padding: 16px;
+        }
+
+        .card-meta {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .card-tags {
+            display: flex;
+            gap: 4px;
+            overflow: hidden;
+            white-space: nowrap;
+            mask-image: linear-gradient(to right, black 80%, transparent 100%);
+        }
+
+        .mini-tag {
+            font-size: 10px;
+            padding: 2px 6px;
+            background: #3A3A3C;
+            border-radius: 4px;
+            color: #E5E5EA;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: black;
+            width: 90%;
+            max-width: 1200px;
+            height: 90vh;
+            border-radius: var(--radius);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            border: 1px solid var(--border);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            z-index: 10;
+            background: #3A3A3C;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: white;
+        }
+
+        .modal-close:hover {
+            background: #48484A;
+        }
+
+        /* Loading & Empty States */
+        .state-message {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--text-secondary);
+            gap: 16px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #3A3A3C;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            font-size: 14px;
             font-weight: 500;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 2000;
+            border: 1px solid var(--border);
         }
 
-        .status-approved {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-pending {
-            background: #fff3cd;
-            color: #856404;
-        }
-
-        .status-rejected {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #86868b;
-        }
-
-        .error {
-            background: #fee;
-            color: #c33;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-        }
-
-        .success {
-            background: #d4edda;
-            color: #155724;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-        }
-
-        .add-tag-section {
-            display: flex;
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .add-tag-section input {
-            flex: 1;
-        }
-
-        .filters {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .filters select {
-            width: auto;
-            min-width: 150px;
-        }
-
-        #apiUrl {
-            margin-bottom: 20px;
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
         }
     </style>
 </head>
+
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>🎭 Meme.AI Admin Panel</h1>
-            <p>Manage memes and tags</p>
-            <div class="nav-tabs">
-                <button class="nav-tab active" onclick="switchTab('tag-management')">Tag Management</button>
-                <button class="nav-tab" onclick="switchTab('meme-moderation')">Meme Moderation</button>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="logo">
+            <span>🎭</span> Meme.AI Admin
+        </div>
+        <div class="nav-links">
+            <div class="nav-item active" onclick="app.switchView('pending')">
+                Pending Review <span id="pendingCount" style="opacity: 0.6; margin-left: 4px">(0)</span>
+            </div>
+            <div class="nav-item" onclick="app.switchView('approved')">
+                Approved Gallery <span id="approvedCount" style="opacity: 0.6; margin-left: 4px">(0)</span>
+            </div>
+            <div class="nav-item" onclick="app.switchView('tags')">
+                Tags
+            </div>
+        </div>
+        <div style="font-size: 12px; color: var(--text-secondary);">
+            API: <span id="apiUrlDisplay">http://localhost:8000</span>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- PENDING VIEW -->
+        <div id="pendingView" class="view active">
+            <div id="pendingLoading" class="state-message">
+                <div class="spinner"></div>
+                <p>Loading pending memes...</p>
+            </div>
+
+            <div id="pendingEmpty" class="state-message" style="display: none;">
+                <div style="font-size: 48px;">🎉</div>
+                <p>All caught up! No pending memes.</p>
+                <button class="btn btn-secondary" onclick="app.loadMemes()">Refresh</button>
+            </div>
+
+            <div id="pendingContent" class="pending-container" style="display: none;">
+                <!-- Image Side -->
+                <div class="image-section">
+                    <img id="currentMemeImage" class="meme-image" src="" alt="Meme">
+                    <div
+                        style="position: absolute; top: 16px; left: 16px; background: rgba(0,0,0,0.6); color: white; padding: 4px 8px; border-radius: 6px; font-size: 12px;">
+                        ID: <span id="currentMemeId">...</span>
+                    </div>
+                </div>
+
+                <!-- Controls Side (Injected via JS for reuse) -->
+                <div id="pendingControls" class="controls-section"></div>
             </div>
         </div>
 
-        <!-- API Configuration -->
-        <div class="card">
-            <div class="form-group">
-                <label>API Base URL</label>
-                <input type="url" id="apiUrl" value="http://localhost:8000" placeholder="http://localhost:8000">
+        <!-- APPROVED VIEW -->
+        <div id="approvedView" class="view">
+            <div class="filter-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="font-size: 16px; font-weight: 600;">Filter by Category</h3>
+                    <button class="btn btn-secondary" onclick="app.loadMemes()"
+                        style="padding: 6px 12px; font-size: 12px;">🔄 Refresh</button>
+                </div>
+
+                <!-- Category Buttons -->
+                <div id="categoryFilters" class="category-filters">
+                    <!-- Injected via JS -->
+                </div>
+
+                <!-- Search Bar -->
+                <div class="input-group" style="margin-bottom: 16px;">
+                    <input type="text" id="tagSearchInput" placeholder="Search specific tags..." autocomplete="off">
+                </div>
+
+                <!-- Search Results -->
+                <div id="suggestedTags" class="suggested-tags-area" style="display: none; margin-bottom: 16px;">
+                    <!-- Injected via JS -->
+                </div>
+
+                <!-- Active Filters -->
+                <div id="activeFilters" class="active-filters">
+                    <!-- Injected via JS -->
+                </div>
+            </div>
+
+            <div id="approvedGrid" class="grid-container">
+                <!-- Memes injected here -->
             </div>
         </div>
 
-        <!-- Tag Management Page -->
-        <div id="tag-management" class="page active">
-            <div class="card">
-                <h2>📋 Tag Management</h2>
-                
-                <div class="form-group">
-                    <label>Select Meme to Edit Tags</label>
-                    <select id="memeSelect" onchange="loadMemeForTagging()">
-                        <option value="">-- Select a meme --</option>
-                    </select>
+        <!-- TAGS MANAGEMENT VIEW -->
+        <div id="tagsView" class="view">
+            <div class="filter-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h3 style="font-size: 16px; font-weight: 600;">Manage Custom Tags</h3>
+                    <button class="btn btn-danger" onclick="app.clearAllCustomTags()"
+                        style="padding: 6px 12px; font-size: 12px;">🗑️ Clear All</button>
                 </div>
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 24px;">
+                    These are tags you've manually added. You can remove them here to clean up your "Custom" list.
+                </p>
 
-                <div id="tagEditorSection" style="display: none;">
-                    <div id="memePreview" style="margin: 20px 0;">
-                        <img id="previewImage" style="max-width: 400px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
-                    </div>
-
-                    <div class="form-group">
-                        <label>ML Generated Tags (Auto-tagged)</label>
-                        <div id="mlTags" class="meme-tags"></div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>User Tags (Manual)</label>
-                        <div id="userTags" class="meme-tags"></div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Add New Tag</label>
-                        <div class="add-tag-section">
-                            <input type="text" id="newTag" placeholder="Enter new tag..." onkeypress="if(event.key==='Enter') addTag()">
-                            <button onclick="addTag()">Add Tag</button>
-                        </div>
-                    </div>
-
-                    <div class="meme-actions">
-                        <button class="success" onclick="saveTagChanges()">💾 Save Changes</button>
-                        <button class="secondary" onclick="cancelTagEditing()">Cancel</button>
-                    </div>
+                <div id="customTagsList" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <!-- Injected via JS -->
                 </div>
             </div>
         </div>
 
-        <!-- Meme Moderation Page -->
-        <div id="meme-moderation" class="page">
-            <div class="card">
-                <h2>🗑️ Meme Moderation</h2>
-                
-                <div class="filters">
-                    <select id="statusFilter" onchange="loadMemes()">
-                        <option value="all">All Statuses</option>
-                        <option value="pending">Pending</option>
-                        <option value="approved">Approved</option>
-                        <option value="rejected">Rejected</option>
-                    </select>
-                    <button onclick="loadMemes()">🔄 Refresh</button>
-                </div>
+    </main>
 
-                <div id="memeGrid" class="meme-grid">
-                    <div class="loading">Loading memes...</div>
+    <!-- EDIT MODAL -->
+    <div id="editModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-close" onclick="app.closeModal()">×</div>
+            <div class="pending-container" style="padding: 24px; height: 100%;">
+                <div class="image-section">
+                    <img id="modalMemeImage" class="meme-image" src="" alt="Meme">
+                </div>
+                <div id="modalControls" class="controls-section">
+                    <!-- Controls injected here -->
                 </div>
             </div>
         </div>
     </div>
 
+    <!-- TEMPLATE FOR CONTROLS -->
+    <template id="controlsTemplate">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3>Tag Management</h3>
+            <span class="progress-indicator" style="font-size: 12px; color: var(--text-secondary);"></span>
+        </div>
+
+        <!-- Tags Display -->
+        <div>
+            <div class="tag-group">
+                <div class="tag-group-label">ML Visual Tags</div>
+                <div class="tags-container visual-tags-container"></div>
+            </div>
+            <div class="tag-group">
+                <div class="tag-group-label">ML Context Tags</div>
+                <div class="tags-container context-tags-container"></div>
+            </div>
+            <div class="tag-group">
+                <div class="tag-group-label">Manual / Custom Tags</div>
+                <div class="tags-container user-tags-container"></div>
+            </div>
+        </div>
+
+        <!-- Add Tags -->
+        <div class="tag-input-area">
+            <div class="tag-group-label">Add Tags</div>
+
+            <!-- Category Buttons for Adding -->
+            <div class="category-filters" id="addTagCategories">
+                <!-- Injected via JS -->
+            </div>
+
+            <!-- Search Bar for Adding -->
+            <div class="input-group" style="margin-top: 12px;">
+                <input type="text" id="addTagSearchInput" placeholder="Search tags to add..." autocomplete="off">
+            </div>
+            <div id="addTagSuggestions" class="suggested-tags-area" style="display: none; margin-bottom: 12px;"></div>
+
+            <!-- Manual Input -->
+            <div class="input-group">
+                <input type="text" class="manual-tag-input" placeholder="Type custom tag..." autocomplete="off">
+                <button class="btn btn-secondary add-tag-btn" style="padding: 8px 16px;">Add</button>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="action-bar">
+            <!-- Buttons injected based on context -->
+        </div>
+    </template>
+
+    <div id="toast" class="toast">Action Successful</div>
+
     <script>
-        // State
-        let currentMeme = null;
-        let allMemes = [];
-        let mlTags = [];
-        let userTags = [];
+        const API_BASE = 'http://localhost:8000';
 
-        function getApiUrl() {
-            return document.getElementById('apiUrl').value;
-        }
+        const app = {
+            state: {
+                pendingMemes: [],
+                approvedMemes: [],
+                currentIndex: 0,
+                currentMeme: null,
+                isModalOpen: false,
 
-        function switchTab(tabId) {
-            // Update tab buttons
-            document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
-            event.target.classList.add('active');
+                tempTags: { visual: [], contextual: [], user: [] },
 
-            // Update pages
-            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
+                allKnownTags: new Set(),
+                predefinedTags: new Set(), // Store predefined tags separately
+                customTags: [],
 
-            // Load data for the tab
-            if (tabId === 'tag-management') {
-                loadMemesForTagging();
-            } else if (tabId === 'meme-moderation') {
-                loadMemes();
-            }
-        }
+                // Categorized Tags
+                tagCategories: {},
 
-        // ============ TAG MANAGEMENT ============
+                // Filter State
+                activeFilters: [], // Array of strings
+            },
 
-        async function loadMemesForTagging() {
-            try {
-                const response = await fetch(`${getApiUrl()}/memes?limit=100&status=approved`);
-                const data = await response.json();
-                
-                const select = document.getElementById('memeSelect');
-                select.innerHTML = '<option value="">-- Select a meme --</option>';
-                
-                data.memes.forEach(meme => {
-                    const option = document.createElement('option');
-                    option.value = meme.id;
-                    option.textContent = `${meme.id} (${meme.all_tags?.length || 0} tags)`;
-                    select.appendChild(option);
+            init() {
+                this.loadCustomTags();
+                this.loadTagOptions();
+                this.loadMemes();
+
+                // Close dropdowns when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('.category-btn-wrapper')) {
+                        document.querySelectorAll('.category-dropdown').forEach(el => el.classList.remove('show'));
+                    }
                 });
 
-                allMemes = data.memes;
-            } catch (error) {
-                showError('Failed to load memes: ' + error.message);
-            }
-        }
-
-        async function loadMemeForTagging() {
-            const memeId = document.getElementById('memeSelect').value;
-            if (!memeId) {
-                document.getElementById('tagEditorSection').style.display = 'none';
-                return;
-            }
-
-            try {
-                const response = await fetch(`${getApiUrl()}/memes/${memeId}`);
-                currentMeme = await response.json();
-
-                // Show editor
-                document.getElementById('tagEditorSection').style.display = 'block';
-
-                // Show image
-                document.getElementById('previewImage').src = currentMeme.image_url;
-
-                // Separate ML and user tags
-                mlTags = [...(currentMeme.visual_tags || []), ...(currentMeme.contextual_tags || [])];
-                userTags = [...(currentMeme.user_tags || [])];
-
-                renderTags();
-            } catch (error) {
-                showError('Failed to load meme: ' + error.message);
-            }
-        }
-
-        function renderTags() {
-            // Render ML tags
-            const mlContainer = document.getElementById('mlTags');
-            mlContainer.innerHTML = mlTags.map(tag => `
-                <span class="tag ml-tag">
-                    ${tag}
-                    <span class="tag-remove" onclick="removeMLTag('${tag}')">×</span>
-                </span>
-            `).join('');
-
-            // Render user tags
-            const userContainer = document.getElementById('userTags');
-            userContainer.innerHTML = userTags.map(tag => `
-                <span class="tag user-tag">
-                    ${tag}
-                    <span class="tag-remove" onclick="removeUserTag('${tag}')">×</span>
-                </span>
-            `).join('');
-        }
-
-        function removeMLTag(tag) {
-            mlTags = mlTags.filter(t => t !== tag);
-            renderTags();
-        }
-
-        function removeUserTag(tag) {
-            userTags = userTags.filter(t => t !== tag);
-            renderTags();
-        }
-
-        function addTag() {
-            const input = document.getElementById('newTag');
-            const tag = input.value.trim().toLowerCase();
-            
-            if (!tag) return;
-            
-            if (userTags.includes(tag) || mlTags.includes(tag)) {
-                showError('Tag already exists');
-                return;
-            }
-
-            userTags.push(tag);
-            input.value = '';
-            renderTags();
-        }
-
-        async function saveTagChanges() {
-            if (!currentMeme) return;
-
-            try {
-                // Reconstruct all_tags
-                const allTags = [...new Set([...mlTags, ...userTags])];
-
-                // Update meme in database
-                const response = await fetch(`${getApiUrl()}/memes/${currentMeme.id}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        visual_tags: currentMeme.visual_tags.filter(t => mlTags.includes(t)),
-                        contextual_tags: currentMeme.contextual_tags.filter(t => mlTags.includes(t)),
-                        user_tags: userTags,
-                        all_tags: allTags
-                    })
+                // Filter Search Listener
+                const filterInput = document.getElementById('tagSearchInput');
+                filterInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        this.searchFilterTags(e.target.value);
+                    }
                 });
+            },
 
-                if (response.ok) {
-                    showSuccess('Tags updated successfully!');
-                    cancelTagEditing();
-                } else {
-                    showError('Failed to update tags');
+            switchView(viewName) {
+                document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+                document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+                document.getElementById(`${viewName}View`).classList.add('active');
+
+                // Update Nav
+                const navItems = document.querySelectorAll('.nav-item');
+                if (viewName === 'pending') navItems[0].classList.add('active');
+                else if (viewName === 'approved') navItems[1].classList.add('active');
+                else if (viewName === 'tags') {
+                    navItems[2].classList.add('active');
+                    this.renderTagsView();
                 }
-            } catch (error) {
-                showError('Error saving tags: ' + error.message);
-            }
-        }
+            },
 
-        function cancelTagEditing() {
-            document.getElementById('memeSelect').value = '';
-            document.getElementById('tagEditorSection').style.display = 'none';
-            document.getElementById('newTag').value = '';
-            currentMeme = null;
-        }
+            // Data Loading
+            async loadMemes() {
+                try {
+                    document.getElementById('pendingLoading').style.display = 'flex';
 
-        // ============ MEME MODERATION ============
+                    const [pendingRes, approvedRes] = await Promise.all([
+                        fetch(`${API_BASE}/memes?status=pending&limit=100`),
+                        fetch(`${API_BASE}/memes?status=approved&limit=1000`)
+                    ]);
 
-        async function loadMemes() {
-            const grid = document.getElementById('memeGrid');
-            grid.innerHTML = '<div class="loading">Loading memes...</div>';
+                    const pendingData = await pendingRes.json();
+                    const approvedData = await approvedRes.json();
 
-            try {
-                const status = document.getElementById('statusFilter').value;
-                const url = status === 'all' 
-                    ? `${getApiUrl()}/memes?limit=100&status=approved`
-                    : `${getApiUrl()}/memes?limit=100&status=${status}`;
+                    this.state.pendingMemes = pendingData.memes || [];
+                    this.state.approvedMemes = approvedData.memes || [];
 
-                const response = await fetch(url);
-                const data = await response.json();
+                    this.aggregateTags([...this.state.pendingMemes, ...this.state.approvedMemes]);
 
-                if (data.memes.length === 0) {
-                    grid.innerHTML = '<div class="loading">No memes found</div>';
+                    // Update UI
+                    document.getElementById('pendingCount').textContent = `(${this.state.pendingMemes.length})`;
+                    document.getElementById('approvedCount').textContent = `(${this.state.approvedMemes.length})`;
+
+                    // Render Pending
+                    if (this.state.pendingMemes.length > 0) {
+                        this.state.currentIndex = 0;
+                        this.loadPendingMemeUI();
+                        document.getElementById('pendingContent').style.display = 'grid';
+                        document.getElementById('pendingEmpty').style.display = 'none';
+                    } else {
+                        document.getElementById('pendingContent').style.display = 'none';
+                        document.getElementById('pendingEmpty').style.display = 'flex';
+                    }
+                    document.getElementById('pendingLoading').style.display = 'none';
+
+                    // Render Approved Grid
+                    this.applyFilters();
+
+                } catch (err) {
+                    console.error(err);
+                    this.showToast('Error loading memes: ' + err.message, true);
+                }
+            },
+
+            aggregateTags(memes) {
+                // Start with predefined tags
+                this.state.allKnownTags = new Set(this.state.predefinedTags);
+
+                memes.forEach(meme => {
+                    (meme.visual_tags || []).forEach(t => this.state.allKnownTags.add(t));
+                    (meme.contextual_tags || []).forEach(t => this.state.allKnownTags.add(t));
+                    (meme.user_tags || []).forEach(t => this.state.allKnownTags.add(t));
+                });
+                this.state.customTags.forEach(t => this.state.allKnownTags.add(t));
+
+                // Update Custom Tags Category
+                this.state.tagCategories['custom'] = Array.from(this.state.allKnownTags).filter(tag => {
+                    // Filter out tags that belong to other categories
+                    for (const [cat, tags] of Object.entries(this.state.tagCategories)) {
+                        if (cat !== 'custom' && tags.includes(tag)) return false;
+                    }
+                    return true;
+                });
+                this.renderCategoryButtons();
+            },
+
+            loadCustomTags() {
+                const stored = localStorage.getItem('customTags');
+                if (stored) this.state.customTags = JSON.parse(stored);
+            },
+
+            async loadTagOptions() {
+                try {
+                    const res = await fetch(`${API_BASE}/tags/options`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        this.state.tagCategories = data;
+
+                        // Flatten for search/autocomplete
+                        Object.values(data).flat().forEach(t => {
+                            this.state.predefinedTags.add(t);
+                            this.state.allKnownTags.add(t);
+                        });
+
+                        this.renderCategoryButtons();
+                    }
+                } catch (err) {
+                    console.error('Failed to load tag options:', err);
+                }
+            },
+
+            saveCustomTag(tag) {
+                if (!this.state.customTags.includes(tag)) {
+                    this.state.customTags.push(tag);
+                    localStorage.setItem('customTags', JSON.stringify(this.state.customTags));
+                    this.state.allKnownTags.add(tag);
+                }
+            },
+
+            // ================= FILTERING LOGIC =================
+
+            renderCategoryButtons() {
+                const container = document.getElementById('categoryFilters');
+                if (!container) return;
+
+                const labels = {
+                    'visual_type': '📷 Type',
+                    'visual_people': '👥 People',
+                    'visual_action': '🏃 Action',
+                    'visual_format': '🖼️ Format',
+                    'context_emotion': '😊 Emotion',
+                    'context_vibe': '✨ Vibe',
+                    'context_situation': '🤔 Situation',
+                    'context_social': '💬 Social',
+                    'custom': '🏷️ Custom/Other'
+                };
+
+                // Ensure 'custom' exists
+                if (!this.state.tagCategories['custom']) this.state.tagCategories['custom'] = [];
+
+                container.innerHTML = Object.keys(labels).map(key => {
+                    const tags = this.state.tagCategories[key] || [];
+                    if (tags.length === 0) return ''; // Skip empty categories
+
+                    return `
+                        <div class="category-btn-wrapper">
+                            <button class="category-btn" onclick="app.toggleDropdown('${key}')">
+                                ${labels[key]}
+                            </button>
+                            <div id="dropdown-${key}" class="category-dropdown">
+                                ${tags.sort().map(tag => `
+                                    <div class="dropdown-item" onclick="app.addFilter('${tag}')">${tag}</div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            },
+
+            toggleDropdown(key) {
+                const dropdown = document.getElementById(`dropdown-${key}`);
+                const wasOpen = dropdown.classList.contains('show');
+
+                // Close all others
+                document.querySelectorAll('.category-dropdown').forEach(el => el.classList.remove('show'));
+
+                if (!wasOpen) {
+                    dropdown.classList.add('show');
+                }
+            },
+
+            searchFilterTags(query) {
+                const q = query.toLowerCase().trim();
+                const container = document.getElementById('suggestedTags');
+
+                if (!q) {
+                    container.style.display = 'none';
                     return;
                 }
 
-                grid.innerHTML = data.memes.map(meme => `
-                    <div class="meme-card" id="meme-${meme.id}">
-                        <img class="meme-image" src="${meme.image_url}" alt="Meme">
-                        <div class="meme-content">
-                            <div class="meme-id">${meme.id}</div>
-                            <span class="status-badge status-${meme.status}">${meme.status}</span>
-                            
-                            <div class="meme-stats">
+                const allTags = Array.from(this.state.allKnownTags);
+                const matches = allTags.filter(t => t.toLowerCase().includes(q));
+
+                if (matches.length === 0) {
+                    container.innerHTML = '<span style="color:var(--text-secondary); font-size:12px;">No matching tags found</span>';
+                    container.style.display = 'flex';
+                    return;
+                }
+
+                container.innerHTML = matches.map(tag => `
+                    <div class="preset-tag" onclick="app.addFilter('${tag}')">${tag}</div>
+                `).join('');
+                container.style.display = 'flex';
+            },
+
+            addFilter(tag) {
+                if (!this.state.activeFilters.includes(tag)) {
+                    this.state.activeFilters.push(tag);
+                    this.renderActiveFilters();
+                    this.applyFilters();
+                }
+                // Close dropdowns
+                document.querySelectorAll('.category-dropdown').forEach(el => el.classList.remove('show'));
+                // Clear search
+                document.getElementById('tagSearchInput').value = '';
+                document.getElementById('suggestedTags').style.display = 'none';
+            },
+
+            removeFilter(tag) {
+                this.state.activeFilters = this.state.activeFilters.filter(t => t !== tag);
+                this.renderActiveFilters();
+                this.applyFilters();
+            },
+
+            renderActiveFilters() {
+                const container = document.getElementById('activeFilters');
+                container.innerHTML = this.state.activeFilters.map(tag => `
+                    <div class="filter-tag">
+                        ${tag}
+                        <span style="cursor:pointer;font-weight:bold" onclick="app.removeFilter('${tag}')">×</span>
+                    </div>
+                `).join('');
+            },
+
+            applyFilters() {
+                let filtered = this.state.approvedMemes;
+
+                if (this.state.activeFilters.length > 0) {
+                    filtered = filtered.filter(meme => {
+                        const memeTags = [
+                            ...(meme.visual_tags || []),
+                            ...(meme.contextual_tags || []),
+                            ...(meme.user_tags || [])
+                        ];
+                        // Match ALL filters (AND logic)
+                        return this.state.activeFilters.every(filter => memeTags.includes(filter));
+                    });
+                }
+
+                this.renderApprovedGrid(filtered);
+            },
+
+            // ================= PENDING FLOW =================
+
+            loadPendingMemeUI() {
+                const meme = this.state.pendingMemes[this.state.currentIndex];
+                if (!meme) return;
+
+                this.state.currentMeme = meme;
+                this.initTempTags(meme);
+
+                document.getElementById('currentMemeImage').src = meme.firebase_image_url || meme.image_url;
+                document.getElementById('currentMemeId').textContent = meme.id;
+
+                const container = document.getElementById('pendingControls');
+                this.renderControls(container, 'pending');
+            },
+
+            // ================= APPROVED FLOW =================
+
+            renderApprovedGrid(memes) {
+                const grid = document.getElementById('approvedGrid');
+                if (memes.length === 0) {
+                    grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px;">No memes found matching filters</div>';
+                    return;
+                }
+
+                grid.innerHTML = memes.map(meme => `
+                    <div class="meme-card" onclick="app.openModal('${meme.id}')">
+                        <img class="card-img" src="${meme.firebase_image_url || meme.image_url}" loading="lazy">
+                        <div class="card-body">
+                            <div class="card-meta">
+                                <span>${meme.id}</span>
                                 <span>👁️ ${meme.total_views || 0}</span>
-                                <span>👍 ${meme.total_thumbs_up || 0}</span>
-                                <span>👎 ${meme.total_thumbs_down || 0}</span>
-                                <span>⭐ ${meme.total_favorites || 0}</span>
                             </div>
-
-                            <div class="meme-tags">
-                                ${(meme.all_tags || []).slice(0, 5).map(tag => 
-                                    `<span class="tag">${tag}</span>`
-                                ).join('')}
-                                ${meme.all_tags?.length > 5 ? `<span class="tag">+${meme.all_tags.length - 5} more</span>` : ''}
-                            </div>
-
-                            <div class="meme-actions">
-                                ${meme.status !== 'approved' ? 
-                                    `<button class="success" onclick="approveMeme('${meme.id}')">✓ Approve</button>` : ''}
-                                ${meme.status !== 'rejected' ? 
-                                    `<button class="danger" onclick="rejectMeme('${meme.id}')">✗ Reject</button>` : ''}
-                                <button class="danger" onclick="deleteMeme('${meme.id}')">🗑️ Delete</button>
+                            <div class="card-tags">
+                                ${(meme.user_tags || []).slice(0, 3).map(t => `<span class="mini-tag" style="color:#0A84FF">${t}</span>`).join('')}
+                                ${(meme.visual_tags || []).slice(0, 2).map(t => `<span class="mini-tag">${t}</span>`).join('')}
                             </div>
                         </div>
                     </div>
                 `).join('');
-            } catch (error) {
-                grid.innerHTML = `<div class="error">Failed to load memes: ${error.message}</div>`;
-            }
-        }
+            },
 
-        async function approveMeme(memeId) {
-            if (!confirm('Approve this meme?')) return;
+            openModal(memeId) {
+                const meme = this.state.approvedMemes.find(m => m.id === memeId);
+                if (!meme) return;
 
-            try {
-                const response = await fetch(`${getApiUrl()}/memes/${memeId}/approve`, {
-                    method: 'POST'
-                });
+                this.state.currentMeme = meme;
+                this.state.isModalOpen = true;
+                this.initTempTags(meme);
 
-                if (response.ok) {
-                    showSuccess('Meme approved!');
-                    loadMemes();
-                } else {
-                    showError('Failed to approve meme');
+                document.getElementById('modalMemeImage').src = meme.firebase_image_url || meme.image_url;
+                document.getElementById('editModal').classList.add('active');
+
+                const container = document.getElementById('modalControls');
+                this.renderControls(container, 'modal');
+            },
+
+            closeModal() {
+                document.getElementById('editModal').classList.remove('active');
+                this.state.isModalOpen = false;
+                this.state.currentMeme = null;
+            },
+
+            // ================= SHARED CONTROLS LOGIC =================
+
+            initTempTags(meme) {
+                this.state.tempTags = {
+                    visual: [...(meme.visual_tags || [])],
+                    contextual: [...(meme.contextual_tags || [])],
+                    user: [...(meme.user_tags || [])]
+                };
+            },
+
+            renderControls(container, context) {
+                const template = document.getElementById('controlsTemplate');
+                container.innerHTML = '';
+                container.appendChild(template.content.cloneNode(true));
+
+                if (context === 'pending') {
+                    container.querySelector('.progress-indicator').textContent =
+                        `${this.state.currentIndex + 1} of ${this.state.pendingMemes.length}`;
                 }
-            } catch (error) {
-                showError('Error: ' + error.message);
-            }
-        }
 
-        async function rejectMeme(memeId) {
-            if (!confirm('Reject this meme?')) return;
+                this.renderTagList(container, 'visual', 'visual-tags-container');
+                this.renderTagList(container, 'contextual', 'context-tags-container');
+                this.renderTagList(container, 'user', 'user-tags-container');
 
-            try {
-                const response = await fetch(`${getApiUrl()}/memes/${memeId}/reject`, {
-                    method: 'POST'
-                });
+                const manualInput = container.querySelector('.manual-tag-input');
+                const searchInput = container.querySelector('#addTagSearchInput');
+                const addBtn = container.querySelector('.add-tag-btn');
 
-                if (response.ok) {
-                    showSuccess('Meme rejected!');
-                    loadMemes();
+                manualInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddTag(manualInput, container); };
+                addBtn.onclick = () => this.handleAddTag(manualInput, container);
+
+                // Search Listener
+                searchInput.oninput = (e) => this.searchAddTags(e.target.value, container);
+
+                // Render Category Buttons for Adding
+                this.renderAddTagButtons(container);
+
+                const actionBar = container.querySelector('.action-bar');
+                if (context === 'pending') {
+                    actionBar.innerHTML = `
+            <!-- Actions -->
+            <div style="margin-top: auto; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                <button class="btn btn-success" onclick="app.approveCurrent()" style="grid-column: span 3; padding: 12px; font-weight: 600;">✅ Approve & Next</button>
+                <button class="btn btn-danger" onclick="app.rejectCurrent()" style="white-space: nowrap;">❌ Reject</button>
+                <button class="btn btn-secondary" onclick="app.prevPending()" style="white-space: nowrap;">⬅️ Prev</button>
+                <button class="btn btn-secondary" onclick="app.skipCurrent()" style="white-space: nowrap;">Skip ➡️</button>
+            </div>        `;
                 } else {
-                    showError('Failed to reject meme');
+                    actionBar.innerHTML = `
+                        <button class="btn btn-primary btn-full" onclick="app.saveModalChanges()">💾 Save Changes</button>
+                        <button class="btn btn-danger" onclick="app.deleteCurrent()">🗑️ Delete Meme</button>
+                    `;
                 }
-            } catch (error) {
-                showError('Error: ' + error.message);
-            }
-        }
+            },
 
-        async function deleteMeme(memeId) {
-            if (!confirm('⚠️ PERMANENTLY DELETE this meme? This cannot be undone!')) return;
+            renderTagList(container, type, className) {
+                const list = container.querySelector(`.${className}`);
+                const tags = this.state.tempTags[type];
+                const typeClass = type === 'visual' ? 'tag-visual' : type === 'contextual' ? 'tag-context' : 'tag-user';
 
-            try {
-                const response = await fetch(`${getApiUrl()}/memes/${memeId}`, {
-                    method: 'DELETE'
+                list.innerHTML = tags.map(t => `
+                    <span class="tag ${typeClass}">
+                        ${t}
+                        <span class="tag-remove" onclick="app.removeTag('${type}', '${t}', this)">×</span>
+                    </span>
+                `).join('');
+            },
+
+            renderAddTagButtons(container) {
+                const wrapper = container.querySelector('#addTagCategories');
+                if (!wrapper) return;
+
+                const labels = {
+                    'visual_type': '📷 Type',
+                    'visual_people': '👥 People',
+                    'visual_action': '🏃 Action',
+                    'visual_format': '🖼️ Format',
+                    'context_emotion': '😊 Emotion',
+                    'context_vibe': '✨ Vibe',
+                    'context_situation': '🤔 Situation',
+                    'context_social': '💬 Social',
+                    'custom': '🏷️ Custom'
+                };
+
+                wrapper.innerHTML = Object.keys(labels).map(key => {
+                    const tags = this.state.tagCategories[key] || [];
+                    if (tags.length === 0 && key !== 'custom') return ''; // Always show custom if desired, or check length
+
+                    return `
+                        <div class="category-btn-wrapper">
+                            <button class="category-btn" onclick="app.toggleAddDropdown('${key}', this)">
+                                ${labels[key]}
+                            </button>
+                            <div class="category-dropdown">
+                                ${tags.sort().map(tag => `
+                                    <div class="dropdown-item" onclick="app.addTagFromDropdown('${tag}', this)">${tag}</div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            },
+
+            searchAddTags(query, container) {
+                const q = query.toLowerCase().trim();
+                const suggestions = container.querySelector('#addTagSuggestions');
+
+                if (!q) {
+                    suggestions.style.display = 'none';
+                    return;
+                }
+
+                const allTags = Array.from(this.state.allKnownTags);
+                const matches = allTags.filter(t => t.toLowerCase().includes(q));
+
+                if (matches.length === 0) {
+                    suggestions.style.display = 'none';
+                    return;
+                }
+
+                suggestions.innerHTML = matches.map(tag => `
+                    <div class="preset-tag" onclick="app.addTagFromDropdown('${tag}', this)">${tag}</div>
+                `).join('');
+                suggestions.style.display = 'flex';
+            },
+
+            toggleAddDropdown(key, btn) {
+                const dropdown = btn.nextElementSibling;
+                const wasOpen = dropdown.classList.contains('show');
+                document.querySelectorAll('.category-dropdown').forEach(el => el.classList.remove('show'));
+                if (!wasOpen) dropdown.classList.add('show');
+            },
+
+            addTagFromDropdown(tag, el) {
+                // Determine category
+                let category = 'user';
+                for (const [cat, tags] of Object.entries(this.state.tagCategories)) {
+                    if (tags.includes(tag)) {
+                        if (cat.startsWith('visual')) category = 'visual';
+                        else if (cat.startsWith('context')) category = 'contextual';
+                        break;
+                    }
+                }
+
+                if (!this.state.tempTags[category].includes(tag)) {
+                    this.state.tempTags[category].push(tag);
+                    const container = el.closest('.controls-section');
+                    this.renderTagList(container, category, category === 'visual' ? 'visual-tags-container' : category === 'contextual' ? 'context-tags-container' : 'user-tags-container');
+                }
+
+                // Close dropdowns
+                document.querySelectorAll('.category-dropdown').forEach(el => el.classList.remove('show'));
+
+                // Clear search if used
+                const searchInput = el.closest('.controls-section').querySelector('#addTagSearchInput');
+                if (searchInput) {
+                    searchInput.value = '';
+                    el.closest('.controls-section').querySelector('#addTagSuggestions').style.display = 'none';
+                }
+            },
+
+            // ================= ACTIONS =================
+
+            removeTag(type, tag, el) {
+                this.state.tempTags[type] = this.state.tempTags[type].filter(t => t !== tag);
+                const container = el.closest('.controls-section');
+                const className = type === 'visual' ? 'visual-tags-container' : type === 'contextual' ? 'context-tags-container' : 'user-tags-container';
+                this.renderTagList(container, type, className);
+            },
+
+            handleAddTag(input, container) {
+                const tag = input.value.trim().toLowerCase();
+                if (!tag) return;
+
+                // Check if tag exists in any category (case-insensitive)
+                const lowerTag = tag.toLowerCase();
+                let category = 'user'; // Default
+
+                // 1. Check Global Options
+                for (const [cat, tags] of Object.entries(this.state.tagCategories)) {
+                    const match = tags.find(t => t.toLowerCase() === lowerTag);
+                    if (match) {
+                        tag = match; // Use canonical casing
+                        if (cat.startsWith('visual')) category = 'visual';
+                        else if (cat.startsWith('context')) category = 'contextual';
+                        break;
+                    }
+                }
+
+                // 2. If still 'user', check if it was originally in the meme's tags
+                if (category === 'user' && this.state.currentMeme) {
+                    if (this.state.currentMeme.visual_tags && this.state.currentMeme.visual_tags.some(t => t.toLowerCase() === lowerTag)) {
+                        category = 'visual';
+                    } else if (this.state.currentMeme.contextual_tags && this.state.currentMeme.contextual_tags.some(t => t.toLowerCase() === lowerTag)) {
+                        category = 'contextual';
+                    }
+                }
+
+                // Check if tag is already present in ANY category
+                const existsInVisual = this.state.tempTags.visual.some(t => t.toLowerCase() === lowerTag);
+                const existsInContext = this.state.tempTags.contextual.some(t => t.toLowerCase() === lowerTag);
+                const existsInUser = this.state.tempTags.user.some(t => t.toLowerCase() === lowerTag);
+
+                if (existsInVisual || existsInContext || existsInUser) {
+                    this.showToast(`Tag "${tag}" already exists`, true);
+                    input.value = '';
+                    return;
+                }
+
+                // Add to determined category
+                this.state.tempTags[category].push(tag);
+                this.renderTagList(container, category, category === 'visual' ? 'visual-tags-container' : category === 'contextual' ? 'context-tags-container' : 'user-tags-container');
+                input.value = '';
+            },
+
+
+
+            async saveTags(memeId) {
+                await fetch(`${API_BASE}/memes/${memeId}/tags`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        visual_tags: this.state.tempTags.visual,
+                        contextual_tags: this.state.tempTags.contextual,
+                        user_tags: this.state.tempTags.user
+                    })
                 });
+            },
 
-                if (response.ok) {
-                    showSuccess('Meme deleted permanently!');
-                    document.getElementById(`meme-${memeId}`).remove();
-                } else {
-                    showError('Failed to delete meme');
+            async approveCurrent() {
+                try {
+                    // Save any new custom tags permanently now that we are approving
+                    this.state.tempTags.user.forEach(tag => this.saveCustomTag(tag));
+
+                    await this.saveTags(this.state.currentMeme.id);
+                    const res = await fetch(`${API_BASE}/memes/${this.state.currentMeme.id}/approve`, { method: 'POST' });
+                    if (res.ok) {
+                        this.showToast('Meme Approved! 🎉');
+                        this.nextPending();
+                    } else {
+                        const err = await res.json();
+                        throw new Error(err.detail || 'Approval failed');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    this.showToast('Error: ' + err.message, true);
                 }
-            } catch (error) {
-                showError('Error: ' + error.message);
+            },
+
+            async rejectCurrent() {
+                if (!confirm('Reject this meme?')) return;
+                try {
+                    await fetch(`${API_BASE}/memes/${this.state.currentMeme.id}/reject`, { method: 'POST' });
+                    this.showToast('Meme Rejected');
+                    this.nextPending();
+                } catch (err) { this.showToast('Error: ' + err.message, true); }
+            },
+
+            skipCurrent() { this.nextPending(); },
+
+            prevPending() {
+                if (this.state.currentIndex > 0) {
+                    this.state.currentIndex--;
+                    this.loadPendingMemeUI();
+                } else {
+                    this.showToast('This is the first meme');
+                }
+            },
+
+            nextPending() {
+                this.state.currentIndex++;
+                if (this.state.currentIndex >= this.state.pendingMemes.length) {
+                    this.loadMemes();
+                } else {
+                    this.loadPendingMemeUI();
+                }
+            },
+
+            async saveModalChanges() {
+                try {
+                    // Save any new custom tags permanently
+                    this.state.tempTags.user.forEach(tag => this.saveCustomTag(tag));
+
+                    await this.saveTags(this.state.currentMeme.id);
+                    this.showToast('Changes Saved! 💾');
+                    this.closeModal();
+                    this.loadMemes();
+                } catch (err) { this.showToast('Error: ' + err.message, true); }
+            },
+
+            async deleteCurrent() {
+                if (!confirm('PERMANENTLY DELETE? This cannot be undone.')) return;
+                try {
+                    await fetch(`${API_BASE}/memes/${this.state.currentMeme.id}`, { method: 'DELETE' });
+                    this.showToast('Meme Deleted 🗑️');
+                    this.closeModal();
+                    this.loadMemes();
+                } catch (err) { this.showToast('Error: ' + err.message, true); }
+            },
+
+            // ================= TAGS VIEW =================
+
+            renderTagsView() {
+                const container = document.getElementById('customTagsList');
+                if (this.state.customTags.length === 0) {
+                    container.innerHTML = '<p style="color:var(--text-secondary)">No custom tags yet.</p>';
+                    return;
+                }
+
+                container.innerHTML = this.state.customTags.sort().map(tag => `
+                    <div class="tag tag-user" style="font-size:14px; padding:8px 12px;">
+                        ${tag}
+                        <span class="tag-remove" onclick="app.deleteCustomTag('${tag}')" style="margin-left:8px; font-size:16px;">×</span>
+                    </div>
+                `).join('');
+            },
+
+            deleteCustomTag(tag) {
+                if (!confirm(`Delete custom tag "${tag}"?`)) return;
+
+                this.state.customTags = this.state.customTags.filter(t => t !== tag);
+                localStorage.setItem('customTags', JSON.stringify(this.state.customTags));
+
+                // Also remove from allKnownTags so it disappears from suggestions
+                this.state.allKnownTags.delete(tag);
+
+                this.renderTagsView();
+                this.showToast('Tag deleted');
+            },
+
+            clearAllCustomTags() {
+                if (!confirm('Are you sure you want to delete ALL custom tags? This cannot be undone.')) return;
+
+                // Remove all custom tags from known tags
+                this.state.customTags.forEach(tag => this.state.allKnownTags.delete(tag));
+
+                this.state.customTags = [];
+                localStorage.removeItem('customTags');
+
+                this.renderTagsView();
+                this.showToast('All custom tags deleted');
+            },
+
+            showToast(msg, isError = false) {
+                const toast = document.getElementById('toast');
+                toast.textContent = msg;
+                toast.style.background = isError ? '#FF453A' : '#3A3A3C';
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 3000);
             }
-        }
-
-        // ============ UTILITIES ============
-
-        function showError(message) {
-            alert('❌ ' + message);
-        }
-
-        function showSuccess(message) {
-            alert('✅ ' + message);
-        }
-
-        // Load initial data
-        window.onload = () => {
-            loadMemesForTagging();
         };
+
+        window.addEventListener('DOMContentLoaded', () => app.init());
+
     </script>
 </body>
-</html>
 
+</html>

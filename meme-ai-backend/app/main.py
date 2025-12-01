@@ -1,9 +1,22 @@
+
 from fastapi import FastAPI, HTTPException, UploadFile, File  # pyright: ignore[reportMissingImports]
-from ml_model import auto_tag_meme
+from ml_model import (
+    auto_tag_meme, 
+    extract_context_tags,
+    VISUAL_TYPE_OPTIONS,
+    VISUAL_PEOPLE_OPTIONS,
+    VISUAL_ACTION_OPTIONS,
+    VISUAL_FORMAT_OPTIONS,
+    EMOTION_OPTIONS,
+    VIBE_OPTIONS,
+    SITUATION_OPTIONS,
+    SOCIAL_OPTIONS
+)
 from db import db, User, Meme, create_user, get_user, update_user, create_meme, get_meme, update_meme, delete_meme, upload_image_to_storage
 from fastapi.middleware.cors import CORSMiddleware  # pyright: ignore[reportMissingImports]
 from fastapi.responses import JSONResponse, FileResponse  # pyright: ignore[reportMissingImports]
 from fastapi import HTTPException, status  # pyright: ignore[reportMissingImports]
+from fastapi.staticfiles import StaticFiles  # pyright: ignore[reportMissingImports]
 from typing import Dict, List, Optional 
 from recommendation_engine import get_recommendations
 from datetime import datetime
@@ -71,14 +84,10 @@ class UpdateMemeTagsRequest(BaseModel):
 async def root():
     return {"status": "ok", "message": "Meme.AI backend is running"}
 
-@app.get("/admin")
-async def admin_panel():
-    """Serve the admin panel HTML"""
-    admin_path = Path(__file__).parent.parent / "admin" / "index.html"
-    if admin_path.exists():
-        return FileResponse(admin_path)
-    else:
-        raise HTTPException(status_code=404, detail="Admin panel not found")
+# Mount admin panel
+admin_path = Path(__file__).parent.parent / "admin"
+if admin_path.exists():
+    app.mount("/admin", StaticFiles(directory=str(admin_path), html=True), name="admin")
 
 @app.get("/health")
 async def health_check():
@@ -365,9 +374,48 @@ async def create_meme_endpoint(request: CreateMemeRequest):
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
+@app.patch("/memes/{meme_id}/tags")
+async def update_meme_tags(meme_id: str, request: UpdateMemeTagsRequest):
+    """Update meme tags (used by admin panel)"""
+    try:        
+        meme_dict = get_meme(meme_id)
+        if not meme_dict:
+            raise HTTPException(status_code=404, detail="Meme not found")
+        
+        # Convert to Meme object
+        meme = Meme(**meme_dict)
+        
+        # Update tags
+        if request.visual_tags is not None:
+            meme.visual_tags = request.visual_tags
+        if request.contextual_tags is not None:
+            meme.contextual_tags = request.contextual_tags
+        if request.user_tags is not None:
+            meme.user_tags = request.user_tags
+        
+        # Update all_tags to be combination of all tag types
+        meme.all_tags = list(set(meme.visual_tags + meme.contextual_tags + meme.user_tags))
+        
+        update_meme(meme)
+        
+        return {
+            "status": "success", 
+            "meme_id": meme_id,
+            "visual_tags": meme.visual_tags,
+            "contextual_tags": meme.contextual_tags,
+            "user_tags": meme.user_tags,
+            "all_tags": meme.all_tags
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.put("/memes/{meme_id}")
 async def update_meme_endpoint(meme_id: str, request: UpdateMemeTagsRequest = None):
-    """Update meme tags (used by admin panel)"""
+    """Update meme tags (legacy endpoint - use PATCH /memes/{meme_id}/tags instead)"""
     try:        
         meme_dict = get_meme(meme_id)
         if not meme_dict:
@@ -396,7 +444,7 @@ async def update_meme_endpoint(meme_id: str, request: UpdateMemeTagsRequest = No
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.delete("/memes/{meme_id: str}")
+@app.delete("/memes/{meme_id}")
 async def delete_meme_endpoint(meme_id: str):
     """Delete a meme"""
     try:
@@ -685,6 +733,20 @@ async def track_send(request: FavoriteRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ==================== Meme approval/rejection endpoints ====================
+@app.get("/tags/options")
+async def get_tag_options():
+    """Return all predefined tag options from the ML model, grouped by category"""
+    return {
+        "visual_type": VISUAL_TYPE_OPTIONS,
+        "visual_people": VISUAL_PEOPLE_OPTIONS,
+        "visual_action": VISUAL_ACTION_OPTIONS,
+        "visual_format": VISUAL_FORMAT_OPTIONS,
+        "context_emotion": EMOTION_OPTIONS,
+        "context_vibe": VIBE_OPTIONS,
+        "context_situation": SITUATION_OPTIONS,
+        "context_social": SOCIAL_OPTIONS
+    }
+
 @app.post("/memes/{meme_id}/approve")
 async def approve_meme(meme_id: str):
     """Admin endpoint to approve a meme"""
