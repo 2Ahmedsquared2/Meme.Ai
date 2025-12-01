@@ -901,20 +901,19 @@
                 });
                 this.state.customTags.forEach(t => this.state.allKnownTags.add(t));
 
-                // Update Custom Tags Category
-                this.state.tagCategories['custom'] = Array.from(this.state.allKnownTags).filter(tag => {
-                    // Filter out tags that belong to other categories
-                    for (const [cat, tags] of Object.entries(this.state.tagCategories)) {
-                        if (cat !== 'custom' && tags.includes(tag)) return false;
-                    }
-                    return true;
-                });
+                // Update Custom Tags Category - ONLY show tags from localStorage
+                // Don't include random meme tags that aren't predefined
+                this.state.tagCategories['custom'] = [...this.state.customTags];
                 this.renderCategoryButtons();
             },
 
             loadCustomTags() {
                 const stored = localStorage.getItem('customTags');
-                if (stored) this.state.customTags = JSON.parse(stored);
+                if (stored) {
+                    this.state.customTags = JSON.parse(stored);
+                } else {
+                    this.state.customTags = []; // Initialize as empty array
+                }
             },
 
             async loadTagOptions() {
@@ -1134,11 +1133,49 @@
             // ================= SHARED CONTROLS LOGIC =================
 
             initTempTags(meme) {
+                // Start with ML-generated tags
                 this.state.tempTags = {
                     visual: [...(meme.visual_tags || [])],
                     contextual: [...(meme.contextual_tags || [])],
-                    user: [...(meme.user_tags || [])]
+                    user: []
                 };
+
+                // Re-categorize user_tags - check if they're actually predefined ML tags
+                const userTags = meme.user_tags || [];
+                for (const tag of userTags) {
+                    const lowerTag = tag.toLowerCase();
+                    let foundCategory = null;
+
+                    // Check if this tag is in predefined ML tags
+                    for (const predefinedTag of this.state.predefinedTags) {
+                        if (predefinedTag.toLowerCase() === lowerTag) {
+                            // Found it! Determine which category
+                            for (const [cat, tags] of Object.entries(this.state.tagCategories)) {
+                                if (cat === 'custom') continue;
+                                
+                                if (tags.some(t => t.toLowerCase() === lowerTag)) {
+                                    if (cat.startsWith('visual')) {
+                                        foundCategory = 'visual';
+                                    } else if (cat.startsWith('context')) {
+                                        foundCategory = 'contextual';
+                                    }
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                    }
+
+                    // Add to the correct category
+                    if (foundCategory === 'visual' && !this.state.tempTags.visual.includes(tag)) {
+                        this.state.tempTags.visual.push(tag);
+                    } else if (foundCategory === 'contextual' && !this.state.tempTags.contextual.includes(tag)) {
+                        this.state.tempTags.contextual.push(tag);
+                    } else if (!foundCategory) {
+                        // Truly a custom tag
+                        this.state.tempTags.user.push(tag);
+                    }
+                }
             },
 
             renderControls(container, context) {
@@ -1302,34 +1339,11 @@
             },
 
             handleAddTag(input, container) {
-                const tag = input.value.trim().toLowerCase();
+                let tag = input.value.trim().toLowerCase();
                 if (!tag) return;
 
-                // Check if tag exists in any category (case-insensitive)
-                const lowerTag = tag.toLowerCase();
-                let category = 'user'; // Default
-
-                // 1. Check Global Options
-                for (const [cat, tags] of Object.entries(this.state.tagCategories)) {
-                    const match = tags.find(t => t.toLowerCase() === lowerTag);
-                    if (match) {
-                        tag = match; // Use canonical casing
-                        if (cat.startsWith('visual')) category = 'visual';
-                        else if (cat.startsWith('context')) category = 'contextual';
-                        break;
-                    }
-                }
-
-                // 2. If still 'user', check if it was originally in the meme's tags
-                if (category === 'user' && this.state.currentMeme) {
-                    if (this.state.currentMeme.visual_tags && this.state.currentMeme.visual_tags.some(t => t.toLowerCase() === lowerTag)) {
-                        category = 'visual';
-                    } else if (this.state.currentMeme.contextual_tags && this.state.currentMeme.contextual_tags.some(t => t.toLowerCase() === lowerTag)) {
-                        category = 'contextual';
-                    }
-                }
-
                 // Check if tag is already present in ANY category
+                const lowerTag = tag.toLowerCase();
                 const existsInVisual = this.state.tempTags.visual.some(t => t.toLowerCase() === lowerTag);
                 const existsInContext = this.state.tempTags.contextual.some(t => t.toLowerCase() === lowerTag);
                 const existsInUser = this.state.tempTags.user.some(t => t.toLowerCase() === lowerTag);
@@ -1340,8 +1354,48 @@
                     return;
                 }
 
+                // Determine category by checking predefined tags (from /tags/options)
+                let category = 'user'; // Default to custom/user
+                let canonicalTag = tag; // Store the properly-cased version
+
+                // Check if this tag is in the predefined ML tags
+                for (const predefinedTag of this.state.predefinedTags) {
+                    if (predefinedTag.toLowerCase() === lowerTag) {
+                        // Found it! Use the canonical casing
+                        canonicalTag = predefinedTag;
+                        
+                        // Now determine which category it belongs to
+                        for (const [cat, tags] of Object.entries(this.state.tagCategories)) {
+                            if (cat === 'custom') continue; // Skip custom category
+                            
+                            if (tags.some(t => t.toLowerCase() === lowerTag)) {
+                                if (cat.startsWith('visual')) {
+                                    category = 'visual';
+                                } else if (cat.startsWith('context')) {
+                                    category = 'contextual';
+                                }
+                                break;
+                            }
+                        }
+                        break;
+                    }
+                }
+
+                // If still 'user', check if it was originally in the meme's tags
+                if (category === 'user' && this.state.currentMeme) {
+                    if (this.state.currentMeme.visual_tags && this.state.currentMeme.visual_tags.some(t => t.toLowerCase() === lowerTag)) {
+                        category = 'visual';
+                        // Use the meme's casing
+                        canonicalTag = this.state.currentMeme.visual_tags.find(t => t.toLowerCase() === lowerTag);
+                    } else if (this.state.currentMeme.contextual_tags && this.state.currentMeme.contextual_tags.some(t => t.toLowerCase() === lowerTag)) {
+                        category = 'contextual';
+                        // Use the meme's casing
+                        canonicalTag = this.state.currentMeme.contextual_tags.find(t => t.toLowerCase() === lowerTag);
+                    }
+                }
+
                 // Add to determined category
-                this.state.tempTags[category].push(tag);
+                this.state.tempTags[category].push(canonicalTag);
                 this.renderTagList(container, category, category === 'visual' ? 'visual-tags-container' : category === 'contextual' ? 'context-tags-container' : 'user-tags-container');
                 input.value = '';
             },
@@ -1381,12 +1435,41 @@
             },
 
             async rejectCurrent() {
-                if (!confirm('Reject this meme?')) return;
+                console.log('🔴 REJECT BUTTON CLICKED!');
+                console.log('Current meme:', this.state.currentMeme);
+                
+                if (!this.state.currentMeme) {
+                    alert('Error: No meme selected!');
+                    return;
+                }
+                
+                // NO CONFIRMATION - just reject immediately
                 try {
-                    await fetch(`${API_BASE}/memes/${this.state.currentMeme.id}/reject`, { method: 'POST' });
+                    const memeId = this.state.currentMeme.id;
+                    console.log('Rejecting meme ID:', memeId);
+                    
+                    const url = `${API_BASE}/memes/${memeId}/reject`;
+                    console.log('Calling URL:', url);
+                    
+                    const response = await fetch(url, { method: 'POST' });
+                    console.log('Response status:', response.status);
+                    
+                    if (!response.ok) {
+                        const error = await response.json();
+                        console.error('Server error:', error);
+                        throw new Error(error.detail || 'Reject failed');
+                    }
+                    
+                    const result = await response.json();
+                    console.log('Success:', result);
+                    
                     this.showToast('Meme Rejected');
                     this.nextPending();
-                } catch (err) { this.showToast('Error: ' + err.message, true); }
+                } catch (err) { 
+                    console.error('❌ Reject error:', err);
+                    alert('Error: ' + err.message);
+                    this.showToast('Error: ' + err.message, true); 
+                }
             },
 
             skipCurrent() { this.nextPending(); },
@@ -1422,13 +1505,21 @@
             },
 
             async deleteCurrent() {
-                if (!confirm('PERMANENTLY DELETE? This cannot be undone.')) return;
+                // NO CONFIRMATION - just delete immediately
                 try {
-                    await fetch(`${API_BASE}/memes/${this.state.currentMeme.id}`, { method: 'DELETE' });
+                    console.log('Deleting meme:', this.state.currentMeme.id);
+                    const response = await fetch(`${API_BASE}/memes/${this.state.currentMeme.id}`, { method: 'DELETE' });
+                    if (!response.ok) {
+                        const error = await response.json();
+                        throw new Error(error.detail || 'Delete failed');
+                    }
                     this.showToast('Meme Deleted 🗑️');
                     this.closeModal();
                     this.loadMemes();
-                } catch (err) { this.showToast('Error: ' + err.message, true); }
+                } catch (err) { 
+                    console.error('Delete error:', err);
+                    this.showToast('Error: ' + err.message, true); 
+                }
             },
 
             // ================= TAGS VIEW =================

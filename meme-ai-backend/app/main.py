@@ -127,15 +127,16 @@ def process_meme_upload(image_bytes: bytes, user_tags: List[str], meme_id: str, 
     print(f"✅ Generated {len(ml_tags['all_tags'])} tags!")
     
     # Create final meme object
+    # Note: user_tags starts empty, will be added by admin in the admin panel
     new_meme = Meme(
         id=meme_id,
         image_url=image_url,
         image_hash=img_hash,
-        user_tags=user_tags,
+        user_tags=[],  # ← Empty! Admin will add custom tags
         visual_tags=ml_tags["visual_tags"],           # ← ML visual tags
         contextual_tags=ml_tags["contextual_tags"],   # ← ML contextual tags
         blip2_caption=ml_tags["blip2_caption"],       # ← BLIP caption
-        all_tags=ml_tags["all_tags"] + user_tags,     # ← Combined tags!
+        all_tags=ml_tags["all_tags"],                 # ← Only ML tags initially
         status="pending"
     )
     
@@ -145,8 +146,8 @@ def process_meme_upload(image_bytes: bytes, user_tags: List[str], meme_id: str, 
         "status": "success", 
         "meme_id": meme_id, 
         "image_url": image_url,
-        "ml_tags_generated": len(ml_tags["all_tags"]),  # Show user how many tags
-        "user_tags_added": len(user_tags)
+        "ml_tags_generated": len(ml_tags["all_tags"]),
+        "note": "Meme uploaded with ML tags only. Add custom tags in admin panel."
     }
 # ==================== USER ENDPOINTS ====================
 
@@ -257,8 +258,8 @@ async def get_meme_endpoint(meme_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/memes/upload")
-async def upload_meme_file(file: UploadFile = File(...), user_tags: str = ""):
-    """Upload meme image file"""
+async def upload_meme_file(file: UploadFile = File(...)):
+    """Upload meme image file - user_tags will be added in admin panel"""
     try:
         # Read file
         file_bytes = await file.read()
@@ -286,8 +287,8 @@ async def upload_meme_file(file: UploadFile = File(...), user_tags: str = ""):
         filename = f"meme_{timestamp}_{file.filename}"
         meme_id = f"meme_{int(timestamp)}"
         
-        # get tags
-        tag_list = [tag.strip() for tag in user_tags.split(",")] if user_tags else []
+        # user_tags starts empty - will be added in admin panel
+        tag_list = []
         
         # Process
         return process_meme_upload(file_bytes, tag_list, meme_id, filename)

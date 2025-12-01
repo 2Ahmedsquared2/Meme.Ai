@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Custom Tags</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background: #000;
+            color: #fff;
+        }
+        .container {
+            text-align: center;
+            background: #1C1C1E;
+            padding: 40px;
+            border-radius: 12px;
+            border: 1px solid #38383A;
+        }
+        button {
+            padding: 12px 24px;
+            background: #FF453A;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            background: #D70015;
+        }
+        .success {
+            background: #30D158;
+        }
+        .success:hover {
+            background: #248A3D;
+        }
+        #result {
+            margin-top: 20px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🗑️ Clear Custom Tags</h1>
+        <p>This will remove all "custom" tags from localStorage and start fresh.</p>
+        <p style="font-size: 12px; color: #8E8E93;">Current custom tags: <span id="count">...</span></p>
+        <button onclick="clearTags()">Clear All Custom Tags</button>
+        <button class="success" onclick="window.location.href='index.html'">Go to Admin Panel</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // Show current tags
+        const stored = localStorage.getItem('customTags');
+        const count = stored ? JSON.parse(stored).length : 0;
+        document.getElementById('count').textContent = count + ' tags';
+        
+        if (stored && count > 0) {
+            const tags = JSON.parse(stored);
+            document.getElementById('result').innerHTML = 
+                '<p style="margin-top:20px;"><strong>Current tags:</strong></p>' +
+                '<p style="font-size:12px;color:#8E8E93;">' + tags.join(', ') + '</p>';
+        }
+
+        function clearTags() {
+            localStorage.removeItem('customTags');
+            document.getElementById('count').textContent = '0 tags';
+            document.getElementById('result').innerHTML = '<p style="color:#30D158;margin-top:20px;">✅ All custom tags cleared!</p>';
+        }
+    </script>
+</body>
+</html>
+
