@@ -748,6 +748,67 @@ async def get_tag_options():
         "context_social": SOCIAL_OPTIONS
     }
 
+# ==================== Custom Tags Management (Persisted in Firestore) ====================
+@app.get("/tags/custom")
+async def get_custom_tags():
+    """Get all custom tags from Firestore"""
+    try:
+        doc = db.collection('settings').document('custom_tags').get()
+        if doc.exists:
+            return {"tags": doc.to_dict().get('tags', [])}
+        return {"tags": []}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/tags/custom")
+async def save_custom_tags(tags: List[str]):
+    """Save custom tags to Firestore"""
+    try:
+        db.collection('settings').document('custom_tags').set({'tags': tags})
+        return {"status": "success", "tags": tags}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/tags/custom/{tag_name}")
+async def delete_custom_tag(tag_name: str, remove_from_memes: bool = True):
+    """Delete a custom tag and optionally remove it from all memes"""
+    try:
+        # Remove from custom tags list
+        doc = db.collection('settings').document('custom_tags').get()
+        if doc.exists:
+            tags = doc.to_dict().get('tags', [])
+            tags = [t for t in tags if t.lower() != tag_name.lower()]
+            db.collection('settings').document('custom_tags').set({'tags': tags})
+        
+        # Remove from all memes if requested
+        removed_count = 0
+        if remove_from_memes:
+            memes = db.collection('memes').stream()
+            for meme_doc in memes:
+                meme_data = meme_doc.to_dict()
+                user_tags = meme_data.get('user_tags', [])
+                original_len = len(user_tags)
+                user_tags = [t for t in user_tags if t.lower() != tag_name.lower()]
+                
+                if len(user_tags) < original_len:
+                    # Update meme with tag removed
+                    all_tags = (meme_data.get('visual_tags', []) + 
+                               meme_data.get('contextual_tags', []) + 
+                               user_tags)
+                    db.collection('memes').document(meme_doc.id).update({
+                        'user_tags': user_tags,
+                        'all_tags': all_tags
+                    })
+                    removed_count += 1
+        
+        return {
+            "status": "success", 
+            "tag_deleted": tag_name,
+            "memes_updated": removed_count
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/memes/{meme_id}/approve")
 async def approve_meme(meme_id: str):
     """Admin endpoint to approve a meme"""
@@ -758,10 +819,11 @@ async def approve_meme(meme_id: str):
         if not meme_dict:
             raise HTTPException(status_code=404, detail="Meme not found")
         
-        # Update status to approved
-        meme = Meme(**meme_dict)
-        meme.status = "approved"
-        update_meme(meme)
+        # Update status to approved and set approved_at timestamp
+        db.collection('memes').document(meme_id).update({
+            'status': 'approved',
+            'approved_at': datetime.utcnow()
+        })
         
         return {"status": "success", "message": "Meme approved"}
     

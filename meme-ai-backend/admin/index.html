@@ -697,6 +697,19 @@
                     </select>
                 </div>
 
+                <!-- Recent Memes Filter -->
+                <div style="margin-bottom: 16px;">
+                    <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; display: block;">Show Recent</label>
+                    <select id="recentFilter" onchange="app.applyFilters()" style="width: 100%; padding: 10px 12px; background: var(--input-bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-size: 14px;">
+                        <option value="all">All Memes</option>
+                        <option value="1">Last 1 (most recent)</option>
+                        <option value="5">Last 5</option>
+                        <option value="10">Last 10</option>
+                        <option value="15">Last 15</option>
+                        <option value="20">Last 20</option>
+                    </select>
+                </div>
+
                 <!-- Search Results -->
                 <div id="suggestedTags" class="suggested-tags-area" style="display: none; margin-bottom: 16px;">
                     <!-- Injected via JS -->
@@ -923,12 +936,24 @@
             },
 
             loadCustomTags() {
-                const stored = localStorage.getItem('customTags');
-                if (stored) {
-                    this.state.customTags = JSON.parse(stored);
-                } else {
-                    this.state.customTags = []; // Initialize as empty array
-                }
+                // Load from Firestore (persists across server restarts)
+                fetch(`${API_BASE}/tags/custom`)
+                    .then(res => res.json())
+                    .then(data => {
+                        this.state.customTags = data.tags || [];
+                        // Also sync to localStorage as backup
+                        localStorage.setItem('customTags', JSON.stringify(this.state.customTags));
+                        this.aggregateTags();
+                    })
+                    .catch(err => {
+                        // Fallback to localStorage if API fails
+                        const stored = localStorage.getItem('customTags');
+                        if (stored) {
+                            this.state.customTags = JSON.parse(stored);
+                        } else {
+                            this.state.customTags = [];
+                        }
+                    });
             },
 
             async loadTagOptions() {
@@ -954,6 +979,12 @@
             saveCustomTag(tag) {
                 if (!this.state.customTags.includes(tag)) {
                     this.state.customTags.push(tag);
+                    // Save to both Firestore and localStorage
+                    fetch(`${API_BASE}/tags/custom`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.state.customTags)
+                    });
                     localStorage.setItem('customTags', JSON.stringify(this.state.customTags));
                     this.state.allKnownTags.add(tag);
                 }
@@ -1066,6 +1097,22 @@
 
             applyFilters() {
                 let filtered = this.state.approvedMemes;
+
+                // Sort by approved_at time (most recent first), fallback to upload_time
+                filtered = [...filtered].sort((a, b) => {
+                    const timeA = a.approved_at ? new Date(a.approved_at).getTime() : 
+                                  (a.upload_time ? new Date(a.upload_time).getTime() : 0);
+                    const timeB = b.approved_at ? new Date(b.approved_at).getTime() : 
+                                  (b.upload_time ? new Date(b.upload_time).getTime() : 0);
+                    return timeB - timeA; // Descending (newest first)
+                });
+
+                // Filter by recent count
+                const recentFilter = document.getElementById('recentFilter')?.value || 'all';
+                if (recentFilter !== 'all') {
+                    const count = parseInt(recentFilter);
+                    filtered = filtered.slice(0, count);
+                }
 
                 // Filter by tags
                 if (this.state.activeFilters.length > 0) {
@@ -1621,30 +1668,61 @@
                 `).join('');
             },
 
-            deleteCustomTag(tag) {
-                if (!confirm(`Delete custom tag "${tag}"?`)) return;
-
-                this.state.customTags = this.state.customTags.filter(t => t !== tag);
-                localStorage.setItem('customTags', JSON.stringify(this.state.customTags));
-
-                // Also remove from allKnownTags so it disappears from suggestions
-                this.state.allKnownTags.delete(tag);
-
-                this.renderTagsView();
-                this.showToast('Tag deleted');
+            async deleteCustomTag(tag) {
+                const removeFromMemes = confirm(`Delete custom tag "${tag}"?\n\nClick OK to also remove this tag from ALL memes.\nClick Cancel to just remove from the tag list.`);
+                
+                try {
+                    // Delete from Firestore and optionally from all memes
+                    const res = await fetch(`${API_BASE}/tags/custom/${encodeURIComponent(tag)}?remove_from_memes=${removeFromMemes}`, {
+                        method: 'DELETE'
+                    });
+                    const data = await res.json();
+                    
+                    // Update local state
+                    this.state.customTags = this.state.customTags.filter(t => t !== tag);
+                    localStorage.setItem('customTags', JSON.stringify(this.state.customTags));
+                    this.state.allKnownTags.delete(tag);
+                    
+                    // Refresh memes if tags were removed
+                    if (removeFromMemes && data.memes_updated > 0) {
+                        await this.loadMemes();
+                        this.showToast(`Tag deleted & removed from ${data.memes_updated} memes`);
+                    } else {
+                        this.showToast('Tag deleted');
+                    }
+                    
+                    this.renderTagsView();
+                } catch (err) {
+                    this.showToast('Error deleting tag: ' + err.message, true);
+                }
             },
 
-            clearAllCustomTags() {
-                if (!confirm('Are you sure you want to delete ALL custom tags? This cannot be undone.')) return;
-
-                // Remove all custom tags from known tags
-                this.state.customTags.forEach(tag => this.state.allKnownTags.delete(tag));
-
-                this.state.customTags = [];
-                localStorage.removeItem('customTags');
-
-                this.renderTagsView();
-                this.showToast('All custom tags deleted');
+            async clearAllCustomTags() {
+                const removeFromMemes = confirm('Delete ALL custom tags?\n\nClick OK to also remove these tags from ALL memes.\nClick Cancel to just clear the tag list.');
+                
+                try {
+                    // Delete each tag from Firestore
+                    for (const tag of this.state.customTags) {
+                        await fetch(`${API_BASE}/tags/custom/${encodeURIComponent(tag)}?remove_from_memes=${removeFromMemes}`, {
+                            method: 'DELETE'
+                        });
+                    }
+                    
+                    // Clear local state
+                    this.state.customTags.forEach(tag => this.state.allKnownTags.delete(tag));
+                    this.state.customTags = [];
+                    localStorage.removeItem('customTags');
+                    
+                    // Refresh memes if tags were removed
+                    if (removeFromMemes) {
+                        await this.loadMemes();
+                    }
+                    
+                    this.renderTagsView();
+                    this.showToast('All custom tags deleted');
+                } catch (err) {
+                    this.showToast('Error clearing tags: ' + err.message, true);
+                }
             },
 
             showToast(msg, isError = false) {
