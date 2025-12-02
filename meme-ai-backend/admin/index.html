@@ -682,6 +682,21 @@
                     <input type="text" id="tagSearchInput" placeholder="Search specific tags..." autocomplete="off">
                 </div>
 
+                <!-- Tag Count Filter -->
+                <div style="margin-bottom: 16px;">
+                    <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; display: block;">Filter by Tag Count</label>
+                    <select id="tagCountFilter" onchange="app.applyFilters()" style="width: 100%; padding: 10px 12px; background: var(--input-bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-size: 14px;">
+                        <option value="all">All Memes</option>
+                        <option value="under10">Under 10 ⚠️</option>
+                        <option value="11">11 tags</option>
+                        <option value="12">12 tags</option>
+                        <option value="13">13 tags</option>
+                        <option value="14">14 tags</option>
+                        <option value="15">15 tags</option>
+                        <option value="over15">Over 15 ⭐</option>
+                    </select>
+                </div>
+
                 <!-- Search Results -->
                 <div id="suggestedTags" class="suggested-tags-area" style="display: none; margin-bottom: 16px;">
                     <!-- Injected via JS -->
@@ -1052,6 +1067,7 @@
             applyFilters() {
                 let filtered = this.state.approvedMemes;
 
+                // Filter by tags
                 if (this.state.activeFilters.length > 0) {
                     filtered = filtered.filter(meme => {
                         const memeTags = [
@@ -1061,6 +1077,18 @@
                         ];
                         // Match ALL filters (AND logic)
                         return this.state.activeFilters.every(filter => memeTags.includes(filter));
+                    });
+                }
+
+                // Filter by tag count
+                const tagCountFilter = document.getElementById('tagCountFilter')?.value || 'all';
+                if (tagCountFilter !== 'all') {
+                    filtered = filtered.filter(meme => {
+                        const count = (meme.visual_tags?.length || 0) + (meme.contextual_tags?.length || 0) + (meme.user_tags?.length || 0);
+                        if (tagCountFilter === 'under10') return count < 10;
+                        if (tagCountFilter === 'over15') return count > 15;
+                        // Exact number match (11, 12, 13, 14, 15)
+                        return count === parseInt(tagCountFilter);
                     });
                 }
 
@@ -1092,13 +1120,19 @@
                     return;
                 }
 
-                grid.innerHTML = memes.map(meme => `
+                grid.innerHTML = memes.map(meme => {
+                    const tagCount = (meme.visual_tags?.length || 0) + (meme.contextual_tags?.length || 0) + (meme.user_tags?.length || 0);
+                    const tagColor = tagCount < 10 ? '#FF453A' : tagCount <= 15 ? '#FF9F0A' : '#30D158';
+                    return `
                     <div class="meme-card" onclick="app.openModal('${meme.id}')">
                         <img class="card-img" src="${meme.firebase_image_url || meme.image_url}" loading="lazy">
                         <div class="card-body">
                             <div class="card-meta">
                                 <span>${meme.id}</span>
-                                <span>👁️ ${meme.total_views || 0}</span>
+                                <span style="display: flex; align-items: center; gap: 8px;">
+                                    <span style="color: ${tagColor}; font-weight: 600;">🏷️ ${tagCount}</span>
+                                    <span>👁️ ${meme.total_views || 0}</span>
+                                </span>
                             </div>
                             <div class="card-tags">
                                 ${(meme.user_tags || []).slice(0, 3).map(t => `<span class="mini-tag" style="color:#0A84FF">${t}</span>`).join('')}
@@ -1106,7 +1140,7 @@
                             </div>
                         </div>
                     </div>
-                `).join('');
+                `}).join('');
             },
 
             openModal(memeId) {
@@ -1131,6 +1165,20 @@
             },
 
             // ================= SHARED CONTROLS LOGIC =================
+
+            calculateAverageTags() {
+                const memes = this.state.approvedMemes;
+                if (!memes || memes.length === 0) return "0.0";
+                
+                const total = memes.reduce((acc, meme) => {
+                    const count = (meme.visual_tags?.length || 0) + 
+                                  (meme.contextual_tags?.length || 0) + 
+                                  (meme.user_tags?.length || 0);
+                    return acc + count;
+                }, 0);
+                
+                return (total / memes.length).toFixed(1);
+            },
 
             initTempTags(meme) {
                 // Start with ML-generated tags
@@ -1178,15 +1226,38 @@
                 }
             },
 
+            calculateCurrentTags() {
+                if (!this.state.tempTags) return 0;
+                return (this.state.tempTags.visual?.length || 0) + 
+                       (this.state.tempTags.contextual?.length || 0) + 
+                       (this.state.tempTags.user?.length || 0);
+            },
+
+            updateTagStats(container, context) {
+                const current = this.calculateCurrentTags();
+                const avg = this.calculateAverageTags();
+                const progressEl = container.querySelector('.progress-indicator');
+                
+                let text = `Current: ${current} • Target: ${avg}`;
+                if (context === 'pending') {
+                    text = `${this.state.currentIndex + 1} of ${this.state.pendingMemes.length} • ${text}`;
+                }
+                
+                progressEl.textContent = text;
+                
+                // Color code based on target
+                if (current < avg * 0.5) progressEl.style.color = '#FF453A'; // Red (too few)
+                else if (current >= avg) progressEl.style.color = '#30D158'; // Green (good)
+                else progressEl.style.color = '#FF9F0A'; // Orange (getting there)
+            },
+
             renderControls(container, context) {
                 const template = document.getElementById('controlsTemplate');
                 container.innerHTML = '';
                 container.appendChild(template.content.cloneNode(true));
 
-                if (context === 'pending') {
-                    container.querySelector('.progress-indicator').textContent =
-                        `${this.state.currentIndex + 1} of ${this.state.pendingMemes.length}`;
-                }
+                // Initial stats render
+                this.updateTagStats(container, context);
 
                 this.renderTagList(container, 'visual', 'visual-tags-container');
                 this.renderTagList(container, 'contextual', 'context-tags-container');
@@ -1234,6 +1305,9 @@
                         <span class="tag-remove" onclick="app.removeTag('${type}', '${t}', this)">×</span>
                     </span>
                 `).join('');
+                
+                // Update stats whenever tags render
+                this.updateTagStats(container);
             },
 
             renderAddTagButtons(container) {
@@ -1336,6 +1410,10 @@
                 const container = el.closest('.controls-section');
                 const className = type === 'visual' ? 'visual-tags-container' : type === 'contextual' ? 'context-tags-container' : 'user-tags-container';
                 this.renderTagList(container, type, className);
+                
+                // Update stats whenever a tag is added/removed
+                const context = this.state.isModalOpen ? 'modal' : 'pending';
+                this.updateTagStats(container, context);
             },
 
             handleAddTag(input, container) {
@@ -1398,6 +1476,10 @@
                 this.state.tempTags[category].push(canonicalTag);
                 this.renderTagList(container, category, category === 'visual' ? 'visual-tags-container' : category === 'contextual' ? 'context-tags-container' : 'user-tags-container');
                 input.value = '';
+                
+                // Update stats
+                const context = this.state.isModalOpen ? 'modal' : 'pending';
+                this.updateTagStats(container, context);
             },
 
 
