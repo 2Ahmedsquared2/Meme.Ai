@@ -1,6 +1,6 @@
 
 from fastapi import FastAPI, HTTPException, UploadFile, File  # pyright: ignore[reportMissingImports]
-from ml_model import (
+from app.ml_model import (
     auto_tag_meme, 
     extract_context_tags,
     VISUAL_TYPE_OPTIONS,
@@ -12,13 +12,13 @@ from ml_model import (
     SITUATION_OPTIONS,
     SOCIAL_OPTIONS
 )
-from db import db, User, Meme, create_user, get_user, update_user, create_meme, get_meme, update_meme, delete_meme, upload_image_to_storage
+from app.db import db, User, Meme, create_user, get_user, update_user, create_meme, get_meme, update_meme, delete_meme, upload_image_to_storage
 from fastapi.middleware.cors import CORSMiddleware  # pyright: ignore[reportMissingImports]
 from fastapi.responses import JSONResponse, FileResponse  # pyright: ignore[reportMissingImports]
 from fastapi import HTTPException, status  # pyright: ignore[reportMissingImports]
 from fastapi.staticfiles import StaticFiles  # pyright: ignore[reportMissingImports]
 from typing import Dict, List, Optional 
-from recommendation_engine import get_recommendations
+from app.recommendation_engine import get_recommendations
 from datetime import datetime
 from pydantic import BaseModel   # pyright: ignore[reportMissingImports]
 import imagehash
@@ -64,7 +64,7 @@ class FavoriteRequest(BaseModel):
     meme_id: str
 class RecommendationRequest(BaseModel):
     user_id: str
-    context: str
+    context: Optional[str] = None
     session_id: Optional[str] = None
     required_tags: Optional[List[str]] = None
     batch_size: int = 3
@@ -527,30 +527,29 @@ async def track_reaction(request: ReactionRequest):
         if not meme_dict:
             raise HTTPException(status_code=404, detail="Meme not found")
         
-        # Validate reaction is "up" or "down"
-        if request.reaction not in ["up", "down"]:
-            raise HTTPException(status_code=400, detail="Reaction must be 'up' or 'down'")
+        # Validate reaction - accept both formats
+        reaction = request.reaction.lower()
+        if reaction in ["thumbs_up", "up"]:
+            reaction = "up"
+        elif reaction in ["thumbs_down", "down"]:
+            reaction = "down"
+        else:
+            raise HTTPException(status_code=400, detail="Reaction must be 'up', 'down', 'thumbs_up', or 'thumbs_down'")
         
-        # Get current values
-        user_dict = user if isinstance(user, dict) else user.to_dict()
         meme = Meme(**meme_dict)
         
-        # Update user stats
-        if request.reaction == "up":
-            update_user(request.user_id, {
-                'total_memes_thumbed_up': user_dict.get('total_memes_thumbed_up', 0) + 1
-            })
+        # Update meme stats
+        if reaction == "up":
+            user.total_memes_thumbed_up = (user.total_memes_thumbed_up or 0) + 1
             meme.total_thumbs_up += 1
         else:
-            update_user(request.user_id, {
-                'total_memes_thumbed_down': user_dict.get('total_memes_thumbed_down', 0) + 1
-            })
+            user.total_memes_thumbed_down = (user.total_memes_thumbed_down or 0) + 1
             meme.total_thumbs_down += 1
         
-        # Update meme stats
+        update_user(user)
         update_meme(meme)
         
-        return {"status": "success", "message": f"Thumbs {request.reaction} tracked"}
+        return {"status": "success", "message": f"Thumbs {reaction} tracked"}
     
     except HTTPException:
         raise
@@ -571,16 +570,14 @@ async def add_favorite(request: FavoriteRequest):
             raise HTTPException(status_code=404, detail="Meme not found")
         
         # Check if already favorited
-        user_dict = user if isinstance(user, dict) else user.to_dict()
-        favorited = user_dict.get('favorited_meme_ids', [])
+        favorited = user.favorited_meme_ids or []
         
         if request.meme_id not in favorited:
             # Add to favorites
             favorited.append(request.meme_id)
-            update_user(request.user_id, {
-                'favorited_meme_ids': favorited,
-                'total_memes_favorited': user_dict.get('total_memes_favorited', 0) + 1
-            })
+            user.favorited_meme_ids = favorited
+            user.total_memes_favorited = (user.total_memes_favorited or 0) + 1
+            update_user(user)
             
             # Update meme stats
             meme = Meme(**meme_dict)
@@ -596,6 +593,31 @@ async def add_favorite(request: FavoriteRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)) 
 
+@app.get("/interactions/favorites/{user_id}")
+async def get_favorites(user_id: str):
+    """Get all favorited memes for a user"""
+    try:
+        user = get_user(user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Get favorited meme IDs
+        favorited_ids = user.favorited_meme_ids or []
+        
+        # Fetch all favorited memes
+        memes = []
+        for meme_id in favorited_ids:
+            meme_dict = get_meme(meme_id)
+            if meme_dict:
+                memes.append(meme_dict)
+        
+        return {"memes": memes, "count": len(memes)}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.delete("/interactions/favorite/{user_id}/{meme_id}")
 async def remove_favorite(user_id: str, meme_id: str):
     """Remove a meme from user's favorites"""
@@ -609,18 +631,16 @@ async def remove_favorite(user_id: str, meme_id: str):
         if not meme_dict:
             raise HTTPException(status_code=404, detail="Meme not found")
         
-        # Get current values
-        user_dict = user if isinstance(user, dict) else user.to_dict()
-        favorited = user_dict.get('favorited_meme_ids', [])
+        # Get current favorites
+        favorited = user.favorited_meme_ids or []
         
         # Check if it's in favorites
         if meme_id in favorited:
             # Remove from favorites
             favorited.remove(meme_id)
-            update_user(user_id, {
-                'favorited_meme_ids': favorited,
-                'total_memes_favorited': max(0, user_dict.get('total_memes_favorited', 0) - 1)
-            })
+            user.favorited_meme_ids = favorited
+            user.total_memes_favorited = max(0, (user.total_memes_favorited or 0) - 1)
+            update_user(user)
             
             # Update meme stats
             meme = Meme(**meme_dict)

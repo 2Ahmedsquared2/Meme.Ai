@@ -7,15 +7,16 @@ from typing import List, Dict, Optional
 import numpy as np
 import random
 from datetime import datetime, timedelta
-from ml_model import extract_context_tags  # For fallback tag matching
-from db import db, get_user, update_user, get_meme, Meme
-from context_analyzer import (
+from app.ml_model import extract_context_tags  # For fallback tag matching
+from app.db import db, get_user, update_user, get_meme, Meme, User
+from app.context_analyzer import (
     get_context_embedding,
     cosine_similarity,
     find_personal_patterns,
     find_global_patterns
 )
 from collections import Counter
+from google.cloud import firestore  # For Query.DESCENDING
 
 #====================== Session Storage ======================
 # Stores user session data between recommendations
@@ -651,7 +652,8 @@ def get_exploration_meme(
     # Get user's already-seen memes
     user = get_user(user_id)
     if user:
-        user_shown_ids = [entry.get('meme_id') for entry in user.get('recently_shown_memes', [])]
+        recently_shown = user.recently_shown_memes if hasattr(user, 'recently_shown_memes') else []
+        user_shown_ids = [entry.get('meme_id') if isinstance(entry, dict) else entry for entry in recently_shown]
         exclude_ids = exclude_ids + user_shown_ids
     
     # Calculate cutoff date (7 days ago)
@@ -1089,13 +1091,15 @@ def get_recommendations(
             'session_id': session_id
         }
     
+    # Convert to dict for easy access
+    user_dict = user.to_dict() if hasattr(user, 'to_dict') else user
+    
     # Extract context data (use session's stored data)
     context_embedding = session.context_embedding
     context_tags = extract_context_tags(context)
     
     # Step 2: Check exploration trigger (only on first request of new session)
     exploration_candidates = []
-    user_dict = user if isinstance(user, dict) else user.to_dict()
     
     # Determine if this is the FIRST request of a NEW session
     # True if: session has no shown memes yet (brand new)
@@ -1142,10 +1146,13 @@ def get_recommendations(
             query_count += 1
         
         # Save to user DB (persists across sessions)
-        update_user(user_id, {
-            'exploration_query_count': query_count,
-            'next_exploration_at': next_exploration
-        })
+        user_obj = User(
+            id=user_id,
+            exploration_query_count=query_count,
+            next_exploration_at=next_exploration,
+            **{k: v for k, v in user_dict.items() if k not in ['id', 'exploration_query_count', 'next_exploration_at']}
+        )
+        update_user(user_obj)
     
     # Step 3: Inject curated mix (ONLY if no exploration happened)
     curated_injection = []

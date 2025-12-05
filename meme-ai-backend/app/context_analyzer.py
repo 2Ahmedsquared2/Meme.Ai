@@ -8,8 +8,8 @@ import numpy as np
 from datetime import datetime
 from transformers import CLIPProcessor, CLIPModel
 import torch
-from db import db, get_user, update_user, get_meme, GlobalContextPattern
-from ml_model import load_clip
+from app.db import db, get_user, update_user, get_meme, GlobalContextPattern
+from app.ml_model import load_clip
 
 
 #use lazy loading for CLIP model

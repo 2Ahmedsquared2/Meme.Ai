@@ -39,6 +39,10 @@ class Meme:
     blip2_caption: str = ""
     clip_embedding: List[float] = field(default_factory=list)
     all_tags: List[str] = field(default_factory=list)
+    
+    # Use case - describes WHEN to use this meme (human or AI generated)
+    use_case: str = ""
+    use_case_embedding: List[float] = field(default_factory=list)
 
     # timestamps
     created_at: datetime = field(default_factory=datetime.now)
@@ -99,6 +103,8 @@ class Meme:
             'blip2_caption': self.blip2_caption,
             'all_tags': self.all_tags,
             'clip_embedding': self.clip_embedding,
+            'use_case': self.use_case,
+            'use_case_embedding': self.use_case_embedding,
             'created_at': self.created_at,
             'upload_time': self.upload_time,
             'approved_at': self.approved_at,
