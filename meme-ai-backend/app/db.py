@@ -17,7 +17,7 @@ print(f"🔍 Looking for credentials at: {cred_path}")
 cred = credentials.Certificate(cred_path)
 firebase_admin.initialize_app(cred, {
     'projectId': 'get-meme-ai', 
-    'storageBucket': 'get-meme-ai.appspot.com'
+    'storageBucket': 'get-meme-ai.firebasestorage.app'
 })
 
 db = firestore.client()
@@ -31,11 +31,18 @@ class Meme:
     firebase_image_url: Optional[str] = None
     image_hash: str = ""
     status: str = "approved"
+    
+    # Meme type - determines where this meme appears
+    # "customizable" = Template (add text), "rec_engine" = Ready-made, "both" = Shows in both
+    meme_type: str = "rec_engine"
+    is_template: bool = False  # Legacy - kept for backward compatibility
+    text_zones: List[dict] = field(default_factory=list)  # Where text can be placed on templates
 
     # Meme tagging system 
-    user_tags: List[str] = field(default_factory=list)
-    visual_tags: List[str] = field(default_factory=list)
-    contextual_tags: List[str] = field(default_factory=list)
+    user_tags: List[str] = field(default_factory=list)      # Custom tags (admin-added, descriptive)
+    visual_tags: List[str] = field(default_factory=list)    # Gemini visual tags
+    contextual_tags: List[str] = field(default_factory=list) # Gemini contextual tags
+    frontend_tags: List[str] = field(default_factory=list)  # 62 predefined tags for rec engine affinity
     blip2_caption: str = ""
     clip_embedding: List[float] = field(default_factory=list)
     all_tags: List[str] = field(default_factory=list)
@@ -88,6 +95,9 @@ class Meme:
     badge_week: Optional[str] = None        # "⭐ #1", "⭐ #2", "⭐ #3" (popular now)
     badge_all_time: Optional[str] = None    # "👑 Gold", "👑 Silver", "👑 Bronze" (legendary)
 
+    # User submission tracking
+    submitted_by: Optional[str] = None  # User ID who submitted this meme
+
     # Converts the objects to a dictionary for Firestore
     def to_dict(self) -> Dict:
         """Convert Meme object to Firestore-compatible dictionary"""
@@ -97,9 +107,14 @@ class Meme:
             'firebase_image_url': self.firebase_image_url,
             'image_hash': self.image_hash,
             'status': self.status,
+            'meme_type': self.meme_type,
+            'is_template': self.is_template,
+            'text_zones': self.text_zones,
+            'submitted_by': self.submitted_by,
             'user_tags': self.user_tags,
             'visual_tags': self.visual_tags,
             'contextual_tags': self.contextual_tags,
+            'frontend_tags': self.frontend_tags,
             'blip2_caption': self.blip2_caption,
             'all_tags': self.all_tags,
             'clip_embedding': self.clip_embedding,
@@ -160,7 +175,10 @@ class User:
 
     # User preferences
     preference_embedding: List[float] = field(default_factory=list)
-    tag_affinities: Dict[str, float] = field(default_factory=dict)
+    # Tag affinities - tracks user's preference for each frontend_tag
+    # Structure: {"nba": {"score": 5.2, "positive_count": 15, "negative_count": 2, 
+    #                     "last_interaction": datetime, "first_interaction": datetime}}
+    tag_affinities: Dict[str, Dict] = field(default_factory=dict)
 
     #context patterns for rec engine 
     context_patterns: List[Dict] = field(default_factory=list)
@@ -253,6 +271,31 @@ class GlobalContextPattern:
         }
 
 
+@dataclass
+class Notification:
+    """In-app notifications for users"""
+    id: str
+    user_id: str
+    type: str  # "meme_approved", "meme_rejected"
+    title: str
+    message: str
+    meme_id: Optional[str] = None
+    meme_image_url: Optional[str] = None
+    is_read: bool = False
+    created_at: datetime = field(default_factory=datetime.now)
+    
+    def to_dict(self) -> Dict:
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'type': self.type,
+            'title': self.title,
+            'message': self.message,
+            'meme_id': self.meme_id,
+            'meme_image_url': self.meme_image_url,
+            'is_read': self.is_read,
+            'created_at': self.created_at
+        }
 
 
 
@@ -363,6 +406,42 @@ def delete_user(user_id: str) -> None:
     """
     db.collection('users').document(user_id).delete()
     print(f"🗑️ User deleted successfully with ID: {user_id}")
+
+
+# NOTIFICATION FUNCTIONS
+def create_notification(notification: Notification) -> str:
+    """Create a new notification for a user"""
+    doc_ref = db.collection('notifications').document(notification.id)
+    doc_ref.set(notification.to_dict())
+    print(f"🔔 Notification created for user {notification.user_id}: {notification.title}")
+    return notification.id
+
+def get_user_notifications(user_id: str, unread_only: bool = False, limit: int = 50) -> List[Dict]:
+    """Get notifications for a user"""
+    query = db.collection('notifications').where('user_id', '==', user_id)
+    if unread_only:
+        query = query.where('is_read', '==', False)
+    query = query.order_by('created_at', direction=firestore.Query.DESCENDING).limit(limit)
+    
+    notifications = []
+    for doc in query.stream():
+        notifications.append(doc.to_dict())
+    return notifications
+
+def mark_notification_read(notification_id: str) -> None:
+    """Mark a notification as read"""
+    db.collection('notifications').document(notification_id).update({'is_read': True})
+
+def mark_all_notifications_read(user_id: str) -> None:
+    """Mark all notifications as read for a user"""
+    query = db.collection('notifications').where('user_id', '==', user_id).where('is_read', '==', False)
+    for doc in query.stream():
+        doc.reference.update({'is_read': True})
+
+def get_unread_notification_count(user_id: str) -> int:
+    """Get count of unread notifications"""
+    query = db.collection('notifications').where('user_id', '==', user_id).where('is_read', '==', False)
+    return len(list(query.stream()))
 
 # MEME STORAGE FUNCTIONS
 def upload_image_to_storage(file_bytes: bytes, filename: str) -> str:

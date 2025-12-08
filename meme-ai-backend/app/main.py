@@ -1,24 +1,36 @@
 
-from fastapi import FastAPI, HTTPException, UploadFile, File  # pyright: ignore[reportMissingImports]
-from app.ml_model import (
-    auto_tag_meme, 
-    extract_context_tags,
-    VISUAL_TYPE_OPTIONS,
-    VISUAL_PEOPLE_OPTIONS,
-    VISUAL_ACTION_OPTIONS,
-    VISUAL_FORMAT_OPTIONS,
-    EMOTION_OPTIONS,
-    VIBE_OPTIONS,
-    SITUATION_OPTIONS,
-    SOCIAL_OPTIONS
+from fastapi import FastAPI, HTTPException, UploadFile, File, Query, BackgroundTasks, Form  # pyright: ignore[reportMissingImports]
+from app.db import (
+    db, User, Meme, Notification,
+    create_user, get_user, update_user, create_meme, get_meme, update_meme, delete_meme, 
+    upload_image_to_storage,
+    create_notification, get_user_notifications, mark_notification_read, 
+    mark_all_notifications_read, get_unread_notification_count
 )
-from app.db import db, User, Meme, create_user, get_user, update_user, create_meme, get_meme, update_meme, delete_meme, upload_image_to_storage
+import uuid
 from fastapi.middleware.cors import CORSMiddleware  # pyright: ignore[reportMissingImports]
 from fastapi.responses import JSONResponse, FileResponse  # pyright: ignore[reportMissingImports]
 from fastapi import HTTPException, status  # pyright: ignore[reportMissingImports]
 from fastapi.staticfiles import StaticFiles  # pyright: ignore[reportMissingImports]
-from typing import Dict, List, Optional 
-from app.recommendation_engine import get_recommendations
+from typing import Dict, List, Optional
+from app.recommendation_engine import update_tag_affinity
+from app.recommendation_engine_v2 import recommend_memes_v2
+from app.meme_analyzer import (
+    analyze_meme as gemini_analyze_meme, 
+    analyze_context, 
+    analyze_context_from_upload,
+    get_frontend_tags_by_category,
+    get_rate_status as get_meme_analysis_rate_status
+)
+from app.meme_customizer import customize_meme
+from app.transformer import (
+    get_image_embedding,
+    get_text_embedding
+)
+from app.ml_model import (
+    VISUAL_TYPE_OPTIONS, VISUAL_PEOPLE_OPTIONS, VISUAL_ACTION_OPTIONS, VISUAL_FORMAT_OPTIONS,
+    EMOTION_OPTIONS, VIBE_OPTIONS, SITUATION_OPTIONS, SOCIAL_OPTIONS
+)
 from datetime import datetime
 from pydantic import BaseModel   # pyright: ignore[reportMissingImports]
 import imagehash
@@ -77,7 +89,8 @@ class RecommendationFeedbackRequest(BaseModel):
 class UpdateMemeTagsRequest(BaseModel):
     visual_tags: Optional[List[str]] = None
     contextual_tags: Optional[List[str]] = None
-    user_tags: Optional[List[str]] = None
+    user_tags: Optional[List[str]] = None          # Custom tags (descriptive)
+    frontend_tags: Optional[List[str]] = None      # 62 predefined tags for rec engine
     all_tags: Optional[List[str]] = None
 
 @app.get("/")  # pyright: ignore[reportUndefinedVariable]
@@ -104,9 +117,16 @@ async def health_check():
 def process_meme_upload(image_bytes: bytes, user_tags: List[str], meme_id: str, filename: str) -> Dict:
     """
     Check for duplicates BEFORE uploading to storage
-    Run ML auto-tagging and save results
+    Run Gemini auto-tagging and CLIP embedding
+    
+    NEW FLOW (Gemini + CLIP):
+    1. Upload image to storage
+    2. Gemini analyzes → use_case, visual_tags, contextual_tags, frontend_tags
+    3. CLIP embeds the image → clip_embedding
+    4. CLIP embeds the use_case → use_case_embedding
+    5. Save everything to Firestore
     """
-    #Compute hash from bytes(image)
+    # Compute hash from bytes (for duplicate detection)
     img = Image.open(BytesIO(image_bytes))
     img_hash = str(imagehash.phash(img))
     
@@ -118,36 +138,81 @@ def process_meme_upload(image_bytes: bytes, user_tags: List[str], meme_id: str, 
             detail="This meme already exists in our database"
         )
     
-    #Upload to Firebase Storage (only if it's unique)
+    # Upload to Firebase Storage (only if unique)
     image_url = upload_image_to_storage(image_bytes, filename)
     
-    #run auto tagging 
-    print(f"🤖 Running ML auto-tagging for {meme_id}...")
-    ml_tags = auto_tag_meme(image_url)
-    print(f"✅ Generated {len(ml_tags['all_tags'])} tags!")
+    # ========== GEMINI TAGGING ==========
+    print(f"🤖 Running Gemini analysis for {meme_id}...")
+    gemini_result = gemini_analyze_meme(image_url)
     
-    # Create final meme object
-    # Note: user_tags starts empty, will be added by admin in the admin panel
+    use_case = gemini_result.get("use_case", "")
+    visual_tags = gemini_result.get("visual_tags", [])
+    contextual_tags = gemini_result.get("contextual_tags", [])
+    frontend_tags = gemini_result.get("frontend_tags", [])
+    is_template = gemini_result.get("is_template", False)
+    text_zones = gemini_result.get("text_zones", [])
+    
+    # Combine all tags
+    all_tags = list(set(visual_tags + contextual_tags + frontend_tags))
+    
+    print(f"✅ Gemini generated: {len(all_tags)} tags, use_case: '{use_case[:50]}...'")
+    
+    # ========== CLIP EMBEDDINGS ==========
+    print(f"🔄 Generating CLIP embeddings...")
+    
+    # Image embedding (for visual similarity)
+    clip_embedding = get_image_embedding(image_url)
+    
+    # Use case embedding (for context matching)
+    use_case_embedding = []
+    if use_case:
+        use_case_embedding = get_text_embedding(use_case)
+    
+    print(f"✅ CLIP embeddings: image={len(clip_embedding)} dims, use_case={len(use_case_embedding)} dims")
+    
+    # ========== CREATE MEME OBJECT ==========
     new_meme = Meme(
         id=meme_id,
         image_url=image_url,
         image_hash=img_hash,
-        user_tags=[],  # ← Empty! Admin will add custom tags
-        visual_tags=ml_tags["visual_tags"],           # ← ML visual tags
-        contextual_tags=ml_tags["contextual_tags"],   # ← ML contextual tags
-        blip2_caption=ml_tags["blip2_caption"],       # ← BLIP caption
-        all_tags=ml_tags["all_tags"],                 # ← Only ML tags initially
+        meme_type='customizable' if is_template else 'rec_engine',  # Gemini detects meme type
+        is_template=is_template,  # Legacy - kept for backward compatibility
+        text_zones=text_zones,  # Where text can be placed on templates
+        user_tags=[],  # Empty - admin adds custom tags
+        visual_tags=visual_tags,
+        contextual_tags=contextual_tags,
+        frontend_tags=frontend_tags,  # Gemini suggests frontend tags for rec engine
+        blip2_caption="",  # Not using BLIP anymore
+        all_tags=all_tags,
+        clip_embedding=clip_embedding,
+        use_case=use_case,
+        use_case_embedding=use_case_embedding,
         status="pending"
     )
     
     create_meme(new_meme)
     
+    # Get current rate status for response
+    rate_status = get_meme_analysis_rate_status()
+    
     return {
         "status": "success", 
         "meme_id": meme_id, 
         "image_url": image_url,
-        "ml_tags_generated": len(ml_tags["all_tags"]),
-        "note": "Meme uploaded with ML tags only. Add custom tags in admin panel."
+        "gemini_analysis": {
+            "use_case": use_case,
+            "visual_tags_count": len(visual_tags),
+            "contextual_tags_count": len(contextual_tags),
+            "frontend_tags": frontend_tags,
+            "is_template": is_template,
+            "text_zones_count": len(text_zones)
+        },
+        "embeddings": {
+            "clip_image": len(clip_embedding),
+            "use_case": len(use_case_embedding)
+        },
+        "rate_limit": rate_status,
+        "note": "Meme analyzed with Gemini + CLIP. Add custom tags in admin panel."
     }
 # ==================== USER ENDPOINTS ====================
 
@@ -179,9 +244,34 @@ async def get_user_endpoint(user_id: str):
             raise HTTPException(status_code=404, detail="User not found")
         return user.to_dict()
     except HTTPException:
-        raise 
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/users/{user_id}/tag-preferences")
+async def get_user_tag_preferences(user_id: str, limit: int = 10):
+    """
+    Get user's top tag preferences (for debugging/analytics).
+    Shows which tags the user has shown affinity for based on their interactions.
+    """
+    from app.recommendation_engine import get_user_top_tags
+    
+    try:
+        top_tags = get_user_top_tags(user_id, limit=limit)
+        
+        if not top_tags:
+            return {
+                "user_id": user_id,
+                "message": "No tag preferences recorded yet",
+                "top_tags": []
+            }
+        
+        return {
+            "user_id": user_id,
+            "top_tags": top_tags
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/users/{user_id}")
 async def update_user_endpoint(user_id:str, request: CreateUserRequest):
@@ -244,6 +334,78 @@ async def submit_onboarding(user_id: str, request: OnboardingRequest):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 # ==================== MEME ENDPOINTS ====================
+# NOTE: Specific routes like /memes/pending must come BEFORE /memes/{meme_id}
+
+@app.get("/memes/pending")
+async def get_pending_memes_route(limit: int = 100):
+    """Get pending memes for admin review"""
+    try:
+        docs = db.collection('memes').where('status', '==', 'pending').limit(limit).get()
+        memes = [doc.to_dict() for doc in docs]
+        return {"memes": memes, "count": len(memes)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/memes/approved")
+async def get_approved_memes_route(limit: int = 100):
+    """Get approved memes for admin gallery"""
+    try:
+        docs = db.collection('memes').where('status', '==', 'approved').limit(limit).get()
+        memes = [doc.to_dict() for doc in docs]
+        return {"memes": memes, "count": len(memes)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/memes/templates")
+async def get_template_memes(limit: int = 30, tags: List[str] = Query(default=[])):
+    """Get customizable meme templates (is_template=true or meme_type in ['customizable', 'both'])"""
+    try:
+        # Get approved templates
+        query = db.collection('memes').where('status', '==', 'approved').where('is_template', '==', True)
+        
+        if tags and len(tags) > 0:
+            query = query.where('frontend_tags', 'array_contains_any', tags)
+        
+        docs = query.limit(limit).get()
+        
+        memes = []
+        for doc in docs:
+            memes.append(doc.to_dict())
+        
+        return {"memes": memes, "count": len(memes)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/memes/search")
+async def search_memes(limit: int = 30, tags: List[str] = Query(default=[])):
+    """Search approved memes for the Search tab (excludes customizable-only memes)"""
+    try:
+        query = db.collection('memes').where('status', '==', 'approved')
+
+        if tags and len(tags) > 0:
+            query = query.where('frontend_tags', 'array_contains_any', tags)
+
+        # Fetch more to account for filtering
+        docs = query.limit(limit * 2).get()
+
+        memes = []
+        for doc in docs:
+            meme_data = doc.to_dict()
+            # Exclude memes that are ONLY for customization (not for rec engine/browsing)
+            meme_type = meme_data.get('meme_type', 'rec_engine')
+            if meme_type != 'customizable':
+                memes.append(meme_data)
+                if len(memes) >= limit:
+                    break
+
+        return {"memes": memes, "count": len(memes)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/memes/{meme_id}")
 async def get_meme_endpoint(meme_id: str):
     """Get meme by ID"""
@@ -257,12 +419,70 @@ async def get_meme_endpoint(meme_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/memes/upload")
-async def upload_meme_file(file: UploadFile = File(...)):
-    """Upload meme image file - user_tags will be added in admin panel"""
+def background_analyze_meme(meme_id: str, image_url: str):
+    """Background task to run Gemini analysis and CLIP embedding on a meme"""
     try:
+        print(f"🔄 Background analysis started for {meme_id}")
+        
+        # Run Gemini analysis
+        gemini_result = gemini_analyze_meme(image_url, wait_if_limited=True)
+        
+        use_case = gemini_result.get("use_case", "")
+        visual_tags = gemini_result.get("visual_tags", [])
+        contextual_tags = gemini_result.get("contextual_tags", [])
+        frontend_tags = gemini_result.get("frontend_tags", [])
+        is_template = gemini_result.get("is_template", False)
+        text_zones = gemini_result.get("text_zones", [])
+        all_tags = list(set(visual_tags + contextual_tags + frontend_tags))
+        
+        # Run CLIP embedding
+        clip_embedding = get_image_embedding(image_url)
+        use_case_embedding = get_text_embedding(use_case) if use_case else []
+        
+        # Update meme in database
+        meme_type = 'customizable' if is_template else 'rec_engine'
+        
+        db.collection('memes').document(meme_id).update({
+            'status': 'pending',  # Ready for admin review
+            'meme_type': meme_type,
+            'is_template': is_template,
+            'text_zones': text_zones,
+            'visual_tags': visual_tags,
+            'contextual_tags': contextual_tags,
+            'frontend_tags': frontend_tags,
+            'all_tags': all_tags,
+            'use_case': use_case,
+            'clip_embedding': clip_embedding,
+            'use_case_embedding': use_case_embedding
+        })
+        
+        print(f"✅ Background analysis completed for {meme_id}")
+        
+    except Exception as e:
+        print(f"❌ Background analysis failed for {meme_id}: {e}")
+        # Update status to indicate analysis failed
+        db.collection('memes').document(meme_id).update({
+            'status': 'pending',  # Still pending, admin can retry or manually tag
+            'analysis_error': str(e)
+        })
+
+
+@app.post("/memes/upload")
+async def upload_meme_file(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    user_id: str = Form(default=None)
+):
+    """
+    Fast upload endpoint - returns quickly after duplicate check and storage upload.
+    Gemini analysis runs in background.
+    """
+    try:
+        print(f"📤 Upload request received: {file.filename} from user: {user_id}")
+        
         # Read file
         file_bytes = await file.read()
+        print(f"   File size: {len(file_bytes)} bytes")
         
         # Check file size
         max_size = 10 * 1024 * 1024  # 10 MB
@@ -272,31 +492,68 @@ async def upload_meme_file(file: UploadFile = File(...)):
                 detail="Image is too large. Maximum size is 10 MB."
             )
         
-        # make sure it's an image
+        # Validate it's an image
         try:
             img = Image.open(BytesIO(file_bytes))
+            print(f"   Image format: {img.format}, size: {img.size}")
             img.verify()
-        except Exception:
+        except Exception as img_err:
+            print(f"   ❌ Image validation failed: {img_err}")
             raise HTTPException(
                 status_code=400, 
                 detail="Uploaded file is not a valid image."
             )
         
-        # get filename
+        # Check for duplicates using perceptual hash
+        img = Image.open(BytesIO(file_bytes))  # Re-open after verify
+        img_hash = str(imagehash.phash(img))
+        
+        existing = db.collection('memes').where('image_hash', '==', img_hash).limit(1).get()
+        if len(list(existing)) > 0:
+            raise HTTPException(
+                status_code=409, 
+                detail="This meme already exists in our database"
+            )
+        
+        # Generate IDs
         timestamp = datetime.utcnow().timestamp()
         filename = f"meme_{timestamp}_{file.filename}"
         meme_id = f"meme_{int(timestamp)}"
+        print(f"   Meme ID: {meme_id}")
         
-        # user_tags starts empty - will be added in admin panel
-        tag_list = []
+        # Upload to Firebase Storage
+        image_url = upload_image_to_storage(file_bytes, filename)
+        print(f"   ✅ Uploaded to storage: {image_url[:50]}...")
         
-        # Process
-        return process_meme_upload(file_bytes, tag_list, meme_id, filename)
+        # Create meme with minimal data (pending_analysis status)
+        new_meme = Meme(
+            id=meme_id,
+            image_url=image_url,
+            image_hash=img_hash,
+            status="pending_analysis",  # Will become "pending" after analysis
+            submitted_by=user_id,
+            meme_type='rec_engine',  # Default, will be updated by Gemini
+            created_at=datetime.now()
+        )
+        create_meme(new_meme)
+        
+        # Queue background analysis
+        background_tasks.add_task(background_analyze_meme, meme_id, image_url)
+        print(f"   🔄 Queued background analysis")
+        
+        return {
+            "status": "success",
+            "message": "Meme submitted! We'll review it soon.",
+            "meme_id": meme_id
+        }
     
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        print(f"❌ Upload error: {type(e).__name__}: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 
@@ -393,21 +650,78 @@ async def update_meme_tags(meme_id: str, request: UpdateMemeTagsRequest):
             meme.contextual_tags = request.contextual_tags
         if request.user_tags is not None:
             meme.user_tags = request.user_tags
-        
+        if request.frontend_tags is not None:
+            meme.frontend_tags = request.frontend_tags
+
         # Update all_tags to be combination of all tag types
-        meme.all_tags = list(set(meme.visual_tags + meme.contextual_tags + meme.user_tags))
-        
+        meme.all_tags = list(set(meme.visual_tags + meme.contextual_tags + meme.user_tags + meme.frontend_tags))
+
         update_meme(meme)
-        
+
         return {
-            "status": "success", 
+            "status": "success",
             "meme_id": meme_id,
             "visual_tags": meme.visual_tags,
             "contextual_tags": meme.contextual_tags,
             "user_tags": meme.user_tags,
+            "frontend_tags": meme.frontend_tags,
             "all_tags": meme.all_tags
         }
     
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class UpdateMemeRequest(BaseModel):
+    """Request to update meme fields"""
+    use_case: Optional[str] = None
+    meme_type: Optional[str] = None  # "customizable", "rec_engine", or "both"
+    is_template: Optional[bool] = None  # Legacy - kept for backward compatibility
+
+
+@app.patch("/memes/{meme_id}")
+async def update_meme_fields(meme_id: str, request: UpdateMemeRequest):
+    """Update meme fields like use_case, is_template (used by admin panel)"""
+    try:
+        meme_dict = get_meme(meme_id)
+        if not meme_dict:
+            raise HTTPException(status_code=404, detail="Meme not found")
+
+        meme = Meme(**meme_dict)
+
+        # Update use_case if provided
+        if request.use_case is not None:
+            meme.use_case = request.use_case
+            # Re-generate use_case embedding with the new text
+            if request.use_case:
+                from app.transformer import get_text_embedding
+                meme.use_case_embedding = get_text_embedding(request.use_case)
+            else:
+                meme.use_case_embedding = []
+
+        # Update meme_type if provided
+        if request.meme_type is not None:
+            if request.meme_type in ["customizable", "rec_engine", "both"]:
+                meme.meme_type = request.meme_type
+                # Also update legacy is_template for backward compatibility
+                meme.is_template = request.meme_type in ["customizable", "both"]
+
+        # Update is_template if provided (legacy support)
+        if request.is_template is not None:
+            meme.is_template = request.is_template
+
+        update_meme(meme)
+
+        return {
+            "status": "success",
+            "meme_id": meme_id,
+            "use_case": meme.use_case,
+            "meme_type": meme.meme_type,
+            "is_template": meme.is_template
+        }
+
     except HTTPException:
         raise
     except Exception as e:
@@ -458,22 +772,35 @@ async def delete_meme_endpoint(meme_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/memes")
-async def get_all_memes(limit: int = 30, status: str = "approved", tags: Optional[List[str]] = None):
-    """Get top 30 memes based off popularity and filters"""
-    try: 
+async def get_all_memes(limit: int = 30, status: str = "approved", tags: List[str] = Query(default=[]), include_all_types: bool = False):
+    """Get memes based on filters. Set include_all_types=true for admin to see all meme types."""
+    try:
         #collect the memes
         query = db.collection('memes').where('status', '==', status)
         #add tag filters
         if tags and len(tags) > 0:
-            query = query.where('user_tags', 'array_contains_any', tags)
+            query = query.where('frontend_tags', 'array_contains_any', tags)
 
-        #caps results at 30
-        docs = query.limit(limit).get()
+        # Fetch more to account for filtering (if needed)
+        fetch_limit = limit if include_all_types else limit * 2
+        docs = query.limit(fetch_limit).get()
 
         memes = []
         for doc in docs:
-            memes.append(doc.to_dict())
+            meme_data = doc.to_dict()
+            # If include_all_types, don't filter. Otherwise exclude customizable-only memes.
+            if include_all_types:
+                memes.append(meme_data)
+            else:
+                meme_type = meme_data.get('meme_type', 'rec_engine')
+                if meme_type != 'customizable':
+                    memes.append(meme_data)
+            
+            if len(memes) >= limit:
+                break
+
         return{"memes": memes, "count": len(memes)}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -542,9 +869,13 @@ async def track_reaction(request: ReactionRequest):
         if reaction == "up":
             user.total_memes_thumbed_up = (user.total_memes_thumbed_up or 0) + 1
             meme.total_thumbs_up += 1
+            # Update tag affinities (positive signal)
+            update_tag_affinity(request.user_id, request.meme_id, "thumbs_up")
         else:
             user.total_memes_thumbed_down = (user.total_memes_thumbed_down or 0) + 1
             meme.total_thumbs_down += 1
+            # Update tag affinities (negative signal)
+            update_tag_affinity(request.user_id, request.meme_id, "thumbs_down")
         
         update_user(user)
         update_meme(meme)
@@ -583,6 +914,9 @@ async def add_favorite(request: FavoriteRequest):
             meme = Meme(**meme_dict)
             meme.total_favorites += 1
             update_meme(meme)
+            
+            # Update tag affinities (strong positive signal)
+            update_tag_affinity(request.user_id, request.meme_id, "favorite")
             
             return {"status": "success", "message": "Meme added to favorites"}
         else:
@@ -718,6 +1052,9 @@ async def track_send(request: FavoriteRequest):
         meme.total_shares += 1
         update_meme(meme)
         
+        # Update tag affinities (strongest positive signal!)
+        update_tag_affinity(request.user_id, request.meme_id, "send")
+        
         return {"status": "success", "message": "Meme send tracked"}
     
     except HTTPException:
@@ -835,18 +1172,33 @@ async def approve_meme(meme_id: str):
     try:
         # Get the meme
         meme_dict = get_meme(meme_id)
-        
+
         if not meme_dict:
             raise HTTPException(status_code=404, detail="Meme not found")
-        
+
         # Update status to approved and set approved_at timestamp
         db.collection('memes').document(meme_id).update({
             'status': 'approved',
             'approved_at': datetime.utcnow()
         })
-        
+
+        # Create notification if meme was submitted by a user
+        submitted_by = meme_dict.get('submitted_by')
+        if submitted_by:
+            notification = Notification(
+                id=f"notif_{uuid.uuid4().hex[:12]}",
+                user_id=submitted_by,
+                type="meme_approved",
+                title="🎉 Your meme was approved!",
+                message="Your submitted meme is now live. Tap to view and add to favorites!",
+                meme_id=meme_id,
+                meme_image_url=meme_dict.get('image_url'),
+                created_at=datetime.utcnow()
+            )
+            create_notification(notification)
+
         return {"status": "success", "message": "Meme approved"}
-    
+
     except HTTPException:
         raise
     except Exception as e:
@@ -858,37 +1210,87 @@ async def reject_meme(meme_id: str):
     try:
         # Get the meme
         meme_dict = get_meme(meme_id)
-        
+
         if not meme_dict:
             raise HTTPException(status_code=404, detail="Meme not found")
-        
+
         # Update status to rejected
         meme = Meme(**meme_dict)
         meme.status = "rejected"
         update_meme(meme)
-        
+
+        # Create notification if meme was submitted by a user
+        submitted_by = meme_dict.get('submitted_by')
+        if submitted_by:
+            notification = Notification(
+                id=f"notif_{uuid.uuid4().hex[:12]}",
+                user_id=submitted_by,
+                type="meme_rejected",
+                title="Meme not approved",
+                message="Your submitted meme wasn't approved this time. Try submitting another one!",
+                meme_id=meme_id,
+                meme_image_url=meme_dict.get('image_url'),
+                created_at=datetime.utcnow()
+            )
+            create_notification(notification)
+
         return {"status": "success", "message": "Meme rejected"}
-    
+
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ==================== NOTIFICATION ENDPOINTS ====================
+
+@app.get("/notifications/{user_id}")
+async def get_notifications(user_id: str, unread_only: bool = False, limit: int = 50):
+    """Get notifications for a user"""
+    try:
+        notifications = get_user_notifications(user_id, unread_only=unread_only, limit=limit)
+        unread_count = get_unread_notification_count(user_id)
+        return {
+            "notifications": notifications,
+            "unread_count": unread_count
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/notifications/{user_id}/count")
+async def get_notification_count(user_id: str):
+    """Get unread notification count for a user"""
+    try:
+        count = get_unread_notification_count(user_id)
+        return {"unread_count": count}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/notifications/{notification_id}/read")
+async def mark_read(notification_id: str):
+    """Mark a notification as read"""
+    try:
+        mark_notification_read(notification_id)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/notifications/{user_id}/read-all")
+async def mark_all_read(user_id: str):
+    """Mark all notifications as read for a user"""
+    try:
+        mark_all_notifications_read(user_id)
+        return {"status": "success"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 # ==================== RECOMMENDATION ENDPOINT ====================
 
 @app.post("/recommendations")
 async def get_meme_recommendations(request: RecommendationRequest):
     """
-    Get personalized meme recommendations based on user context
-    
-    This endpoint orchestrates the entire recommendation flow:
-    - Session management
-    - Exploration (new meme discovery)
-    - Curated mix (personal favorites + global trends)
-    - Pattern matching (personal + global)
-    - Semantic search (cold start solution)
-    - Thompson Sampling (quality + exploration balance)
-    - Diversity filtering
+    Get personalized meme recommendations (V2 - Parallel Scoring)
     """    
     try:
         # Validate user exists
@@ -899,23 +1301,35 @@ async def get_meme_recommendations(request: RecommendationRequest):
                 detail=f"User {request.user_id} not found"
             )
         
-        # Get recommendations
-        result = get_recommendations(
+        # Get context embedding
+        from app.meme_analyzer import analyze_context
+        from app.transformer import get_text_embedding
+        
+        result = analyze_context(text=request.context)
+        query = result.get('meme_search_query', '')
+        
+        if not query:
+            raise HTTPException(status_code=400, detail="Failed to analyze context")
+        
+        context_embedding = get_text_embedding(query)
+        
+        # Get recommendations using V2
+        rec_result = recommend_memes_v2(
             user_id=request.user_id,
             context=request.context,
-            session_id=request.session_id,
-            required_tags=request.required_tags,
-            batch_size=request.batch_size
+            context_embedding=context_embedding,
+            exclude_ids=[],
+            num_results=request.batch_size
         )
         
-        # Check for errors from recommendation engine
-        if 'error' in result:
+        # Check for errors
+        if 'error' in rec_result.get('metadata', {}):
             raise HTTPException(
                 status_code=500,
-                detail=result['error']
+                detail=rec_result['metadata']['error']
             )
         
-        return result
+        return rec_result
         
     except HTTPException:
         raise
@@ -932,7 +1346,7 @@ async def record_recommendation_feedback(request: RecommendationFeedbackRequest)
     This records the successful context-meme pairing for future learning
     
     What this does:
-    1. Gets the CLIP embedding for the context
+    1. Uses Gemini to analyze context → CLIP embedding
     2. Updates the user's PERSONAL context patterns
     3. Updates the GLOBAL context patterns (community learning)
     4. Records meme in user's interaction history
@@ -945,7 +1359,7 @@ async def record_recommendation_feedback(request: RecommendationFeedbackRequest)
     - System learns: "stressed about work" → "Hide the Pain Harold" works!
 
     """
-    from context_analyzer import (
+    from app.transformer import (
         get_context_embedding,
         update_personal_pattern,
         update_global_patterns
@@ -1013,4 +1427,123 @@ async def record_recommendation_feedback(request: RecommendationFeedbackRequest)
             "message": "Meme sent but learning update failed",
             "error": str(e)
         }
+
+# ============================================================================
+# MEME CUSTOMIZATION ENDPOINTS
+# ============================================================================
+
+class AnalyzeMemeRequest(BaseModel):
+    image_url: str
+
+class CustomizeMemeRequest(BaseModel):
+    image_url: str
+    text_inputs: Dict[int, str]  # {zone_id: "user text"}
+    text_zones: List[dict]       # From analyze response
+
+@app.post("/memes/analyze")
+async def analyze_meme_endpoint(request: AnalyzeMemeRequest):
+    """Analyze a meme to get tags and text zones (for templates)"""
+    result = gemini_analyze_meme(request.image_url)
+    if not result.get("use_case"):
+        raise HTTPException(status_code=500, detail="Failed to analyze meme")
+    return result
+
+@app.post("/memes/customize")
+async def customize_meme_endpoint(request: CustomizeMemeRequest):
+    """Generate a customized meme with user text"""
+    # Convert string keys to int (JSON serialization issue)
+    clean_inputs = {int(k): v for k, v in request.text_inputs.items()}
+    
+    result = customize_meme(request.image_url, clean_inputs, request.text_zones)
+    
+    if not result["success"]:
+        raise HTTPException(status_code=400, detail=result["error"])
+    
+    return {
+        "image_data": result["image_data"],
+        "mime_type": result["mime_type"]
+    }
+
+@app.get("/tags/frontend")
+async def get_frontend_tags():
+    """Get all frontend tags organized by category (for iOS filter UI)"""
+    return get_frontend_tags_by_category()
+
+@app.get("/memes/rate-status")
+async def get_meme_rate_status():
+    """
+    Get rate limit status for meme analysis.
+    
+    Meme tagging is limited to 10/min to preserve Gemini quota for context analysis.
+    Context analysis (user-facing) has NO rate limit - always priority.
+    
+    Returns:
+        requests_used: How many requests made in last minute
+        requests_remaining: How many more can be made
+        max_requests: Limit per minute (10)
+        window_seconds: Time window (60)
+        wait_seconds: Seconds until next request allowed (0 if can proceed)
+    """
+    return get_meme_analysis_rate_status()
+
+# ============================================================================
+# CONTEXT ANALYSIS ENDPOINTS (Gemini-powered)
+# ============================================================================
+
+class AnalyzeContextRequest(BaseModel):
+    text: Optional[str] = None
+    image_url: Optional[str] = None
+
+@app.post("/context/analyze")
+async def analyze_context_endpoint(request: AnalyzeContextRequest):
+    """
+    Analyze user context (text and/or screenshot) to generate a meme search query.
+    
+    This uses Gemini to understand the context and output a description
+    in the same style as meme use_cases for optimal CLIP matching.
+    
+    Returns:
+        meme_search_query: A 1-2 sentence description ready for CLIP embedding
+    """
+    if not request.text and not request.image_url:
+        raise HTTPException(status_code=400, detail="Must provide either text or image_url")
+    
+    result = analyze_context(text=request.text, image_url=request.image_url)
+    
+    if result.get("error"):
+        raise HTTPException(status_code=500, detail=result["error"])
+    
+    return {"meme_search_query": result["meme_search_query"]}
+
+@app.post("/context/analyze/upload")
+async def analyze_context_upload_endpoint(
+    file: UploadFile = File(...),
+    text: Optional[str] = None
+):
+    """
+    Analyze context from an uploaded screenshot (for iOS direct upload).
+    
+    Args:
+        file: Uploaded screenshot image
+        text: Optional additional text context
+        
+    Returns:
+        meme_search_query: A 1-2 sentence description ready for CLIP embedding
+    """
+    # Read file
+    file_bytes = await file.read()
+    
+    # Validate it's an image
+    try:
+        img = Image.open(BytesIO(file_bytes))
+        img.verify()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Uploaded file is not a valid image")
+    
+    result = analyze_context_from_upload(image_bytes=file_bytes, text=text)
+    
+    if result.get("error"):
+        raise HTTPException(status_code=500, detail=result["error"])
+    
+    return {"meme_search_query": result["meme_search_query"]}
 

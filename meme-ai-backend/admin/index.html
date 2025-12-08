@@ -10,7 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            /* Dark Mode Theme */
             --bg: #000000;
             --card-bg: #1C1C1E;
             --card-hover: #2C2C2E;
@@ -25,15 +24,21 @@
             --success: #30D158;
             --success-hover: #248A3D;
 
+            /* Frontend Tag Category Colors */
+            --tag-emotion: #BF5AF2;
+            --tag-source: #0A84FF;
+            --tag-format: #30D158;
+            --tag-tone: #FF9F0A;
+            --tag-situation: #FF453A;
+            --tag-subject: #5AC8FA;
+            --tag-vibe: #FF6B6B;
+            --tag-gemini: #FF9F0A;
+            --tag-custom: #8E8E93;
+
             --radius: 12px;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -45,7 +50,6 @@
             overflow: hidden;
         }
 
-        /* Navigation */
         .navbar {
             background: rgba(28, 28, 30, 0.8);
             backdrop-filter: blur(20px);
@@ -58,19 +62,8 @@
             z-index: 100;
         }
 
-        .logo {
-            font-weight: 700;
-            font-size: 18px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .nav-links {
-            display: flex;
-            gap: 24px;
-        }
-
+        .logo { font-weight: 700; font-size: 18px; display: flex; align-items: center; gap: 8px; }
+        .nav-links { display: flex; gap: 24px; }
         .nav-item {
             cursor: pointer;
             padding: 8px 12px;
@@ -80,18 +73,9 @@
             color: var(--text-secondary);
             transition: all 0.2s;
         }
+        .nav-item:hover { color: var(--text-primary); background: rgba(255, 255, 255, 0.1); }
+        .nav-item.active { color: var(--primary); background: rgba(10, 132, 255, 0.15); }
 
-        .nav-item:hover {
-            color: var(--text-primary);
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .nav-item.active {
-            color: var(--primary);
-            background: rgba(10, 132, 255, 0.15);
-        }
-
-        /* Main Content */
         .main-content {
             flex: 1;
             overflow-y: auto;
@@ -101,25 +85,15 @@
             width: 100%;
         }
 
-        /* Views */
-        .view {
-            display: none;
-            height: 100%;
-        }
+        .view { display: none; height: 100%; }
+        .view.active { display: flex; flex-direction: column; }
 
-        .view.active {
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Pending View Layout */
         .pending-container {
             display: grid;
-            grid-template-columns: 1fr 600px;
-            /* Increased width for controls */
+            grid-template-columns: 1fr 550px;
             gap: 24px;
             height: 100%;
-            max-height: 800px;
+            max-height: 850px;
         }
 
         .image-section {
@@ -133,73 +107,55 @@
             position: relative;
         }
 
-        .meme-image {
-            width: 100%;
-            height: 100%;
-            object-fit: contain;
-            border-radius: 8px;
-        }
+        .meme-image { width: 100%; height: 100%; object-fit: contain; border-radius: 8px; }
 
         .controls-section {
             background: var(--card-bg);
             border-radius: var(--radius);
             border: 1px solid var(--border);
-            padding: 24px;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 16px;
             overflow-y: auto;
         }
 
-        /* Tag Groups */
-        .tag-group {
-            margin-bottom: 16px;
-        }
-
-        .tag-group-label {
-            font-size: 12px;
+        /* Section Headers */
+        .section-header {
+            font-size: 13px;
             font-weight: 600;
             color: var(--text-secondary);
             text-transform: uppercase;
-            margin-bottom: 8px;
             letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
+        .section-divider {
+            border-top: 1px solid var(--border);
+            padding-top: 16px;
+            margin-top: 8px;
+        }
+
+        /* Tags Container */
         .tags-container {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
+            min-height: 32px;
         }
 
         .tag {
-            font-size: 13px;
-            padding: 6px 10px;
+            font-size: 12px;
+            padding: 5px 10px;
             border-radius: 6px;
             display: inline-flex;
             align-items: center;
             gap: 6px;
             cursor: default;
-            transition: all 0.2s;
             border: 1px solid transparent;
-        }
-
-        /* Adjusted Tag Colors for Dark Mode */
-        .tag-visual {
-            background: rgba(255, 149, 0, 0.15);
-            color: #FF9F0A;
-            border-color: rgba(255, 149, 0, 0.3);
-        }
-
-        .tag-context {
-            background: rgba(191, 90, 242, 0.15);
-            color: #BF5AF2;
-            border-color: rgba(191, 90, 242, 0.3);
-        }
-
-        .tag-user {
-            background: rgba(10, 132, 255, 0.15);
-            color: #0A84FF;
-            border-color: rgba(10, 132, 255, 0.3);
         }
 
         .tag-remove {
@@ -207,50 +163,239 @@
             opacity: 0.6;
             font-weight: bold;
             padding: 0 2px;
+            font-size: 14px;
+        }
+        .tag-remove:hover { opacity: 1; color: white; }
+
+        /* Gemini Tags (Orange/Amber) */
+        .tag-gemini {
+            background: rgba(255, 159, 10, 0.15);
+            color: #FF9F0A;
+            border-color: rgba(255, 159, 10, 0.3);
         }
 
-        .tag-remove:hover {
-            opacity: 1;
-            color: var(--danger);
+        /* Frontend Tag Colors */
+        .tag-emotion { background: rgba(191, 90, 242, 0.2); color: #BF5AF2; border-color: rgba(191, 90, 242, 0.4); }
+        .tag-source { background: rgba(10, 132, 255, 0.2); color: #0A84FF; border-color: rgba(10, 132, 255, 0.4); }
+        .tag-format { background: rgba(48, 209, 88, 0.2); color: #30D158; border-color: rgba(48, 209, 88, 0.4); }
+        .tag-tone { background: rgba(255, 159, 10, 0.2); color: #FF9F0A; border-color: rgba(255, 159, 10, 0.4); }
+        .tag-situation { background: rgba(255, 69, 58, 0.2); color: #FF6961; border-color: rgba(255, 69, 58, 0.4); }
+        .tag-subject { background: rgba(90, 200, 250, 0.2); color: #5AC8FA; border-color: rgba(90, 200, 250, 0.4); }
+        .tag-vibe { background: rgba(255, 107, 107, 0.2); color: #FF6B6B; border-color: rgba(255, 107, 107, 0.4); }
+        .tag-custom { background: rgba(142, 142, 147, 0.2); color: #AEAEB2; border-color: rgba(142, 142, 147, 0.4); }
+        
+        /* Custom tags display - Cyan/Teal to differentiate from Gemini orange */
+        .tag-custom-display {
+            background: rgba(100, 210, 255, 0.2);
+            color: #64D2FF;
+            border-color: rgba(100, 210, 255, 0.4);
         }
 
-        /* Inputs */
-        .input-group {
+        /* Meme Type Toggle */
+        .meme-type-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+        .type-btn {
+            padding: 8px 14px;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .type-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: var(--text-secondary);
+        }
+        .type-btn.active {
+            color: white;
+        }
+        .type-btn.active.customizable {
+            background: #30D158;
+            border-color: #30D158;
+        }
+        .type-btn.active.rec_engine {
+            background: #FF9F0A;
+            border-color: #FF9F0A;
+        }
+        .type-btn.active.both {
+            background: #5E5CE6;
+            border-color: #5E5CE6;
+        }
+        
+        /* Approved Gallery Filters */
+        .approved-filters {
             display: flex;
             gap: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s ease;
+        }
+        .filter-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        .filter-btn.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+        .filter-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-right: 4px;
         }
 
-        input[type="text"] {
-            flex: 1;
-            padding: 10px 12px;
+        /* Use Case Section */
+        .use-case-box {
             background: #2C2C2E;
             border: 1px solid var(--border);
-            color: white;
             border-radius: 8px;
-            font-size: 14px;
+            padding: 12px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: var(--text-primary);
+        }
+
+        .use-case-display {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .use-case-text { flex: 1; }
+
+        .use-case-input {
+            flex: 1;
+            background: #2C2C2E;
+            border: 1px solid var(--primary);
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 13px;
+            color: white;
             font-family: inherit;
+            resize: vertical;
+            min-height: 60px;
         }
 
-        input[type="text"]:focus {
-            outline: none;
-            border-color: var(--primary);
+        .edit-btn {
+            background: #3A3A3C;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            white-space: nowrap;
         }
+        .edit-btn:hover { background: #48484A; color: white; }
 
-        .preset-pool {
-            max-height: 150px;
-            overflow-y: auto;
+        /* Category Dropdowns */
+        .category-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+
+        .category-btn-wrapper { position: relative; }
+
+        .category-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s;
+        }
+        .category-btn::after { content: '▼'; font-size: 8px; opacity: 0.6; margin-left: 4px; }
+        .category-btn:hover { filter: brightness(1.1); }
+
+        /* Colored Category Buttons */
+        .cat-btn-emotion { background: rgba(191, 90, 242, 0.3); border-color: rgba(191, 90, 242, 0.5); }
+        .cat-btn-source { background: rgba(10, 132, 255, 0.3); border-color: rgba(10, 132, 255, 0.5); }
+        .cat-btn-format { background: rgba(48, 209, 88, 0.3); border-color: rgba(48, 209, 88, 0.5); }
+        .cat-btn-tone { background: rgba(255, 159, 10, 0.3); border-color: rgba(255, 159, 10, 0.5); }
+        .cat-btn-situation { background: rgba(255, 69, 58, 0.3); border-color: rgba(255, 69, 58, 0.5); }
+        .cat-btn-subject { background: rgba(90, 200, 250, 0.3); border-color: rgba(90, 200, 250, 0.5); }
+        .cat-btn-vibe { background: rgba(255, 107, 107, 0.3); border-color: rgba(255, 107, 107, 0.5); }
+        .cat-btn-custom { background: rgba(142, 142, 147, 0.3); border-color: rgba(142, 142, 147, 0.5); }
+
+        .category-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            margin-top: 6px;
+            background: #1C1C1E;
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 8px;
+            width: 200px;
+            max-height: 250px;
+            overflow-y: auto;
+            z-index: 500;
+            display: none;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
+        }
+        .category-dropdown.show { display: block; }
+
+        .dropdown-item {
+            padding: 6px 10px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .dropdown-item:hover { background: var(--primary); color: white; }
+
+        /* Inputs */
+        input[type="text"] {
+            flex: 1;
+            padding: 8px 10px;
+            background: #2C2C2E;
+            border: 1px solid var(--border);
+            color: white;
+            border-radius: 6px;
+            font-size: 13px;
+            font-family: inherit;
+        }
+        input[type="text"]:focus { outline: none; border-color: var(--primary); }
+
+        .input-group { display: flex; gap: 8px; }
+
+        .suggested-tags-area {
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
-            background: #2C2C2E;
+            padding: 10px;
+            background: #1C1C1E;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            max-height: 150px;
+            overflow-y: auto;
         }
 
         .preset-tag {
-            font-size: 12px;
+            font-size: 11px;
             padding: 4px 8px;
             background: #3A3A3C;
             border: 1px solid var(--border);
@@ -258,82 +403,45 @@
             cursor: pointer;
             color: var(--text-secondary);
         }
+        .preset-tag:hover { border-color: var(--primary); color: var(--primary); }
 
-        .preset-tag:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-            background: #48484A;
-        }
-
-        /* Actions */
-        .action-bar {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-top: 24px;
-            padding-top: 24px;
-            border-top: 1px solid var(--border);
-        }
-
+        /* Action Buttons */
         .btn {
-            padding: 12px;
+            padding: 10px 16px;
             border: none;
             border-radius: 8px;
             font-weight: 600;
-            font-size: 14px;
+            font-size: 13px;
             cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
+            transition: transform 0.1s;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
+        }
+        .btn:active { transform: scale(0.98); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:hover { background: var(--danger-hover); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: var(--success-hover); }
+        .btn-secondary { background: #3A3A3C; color: white; }
+        .btn-secondary:hover { background: #48484A; }
+
+        .action-bar {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: auto;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
         }
 
-        .btn:active {
-            transform: scale(0.98);
-        }
+        /* Progress indicator */
+        .progress-indicator { font-size: 12px; color: var(--text-secondary); }
 
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            background: var(--primary-hover);
-        }
-
-        .btn-danger {
-            background: var(--danger);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            background: var(--danger-hover);
-        }
-
-        .btn-success {
-            background: var(--success);
-            color: white;
-        }
-
-        .btn-success:hover {
-            background: var(--success-hover);
-        }
-
-        .btn-secondary {
-            background: #3A3A3C;
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            background: #48484A;
-        }
-
-        .btn-full {
-            grid-column: span 2;
-        }
-
-        /* Approved Grid & Filter */
+        /* Grid & Cards for Approved */
         .filter-section {
             background: var(--card-bg);
             padding: 20px;
@@ -342,117 +450,10 @@
             margin-bottom: 24px;
         }
 
-        /* Category Buttons & Dropdowns */
-        .category-filters {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 12px;
-            margin-bottom: 16px;
-        }
-
-        .category-btn-wrapper {
-            position: relative;
-        }
-
-        .category-btn {
-            padding: 8px 16px;
-            background: #2C2C2E;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            color: white;
-            font-size: 13px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s;
-        }
-
-        .category-btn:hover,
-        .category-btn.active {
-            border-color: var(--primary);
-            background: #3A3A3C;
-        }
-
-        .category-btn::after {
-            content: '▼';
-            font-size: 8px;
-            opacity: 0.6;
-        }
-
-        .category-dropdown {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            margin-top: 8px;
-            background: #1C1C1E;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 8px;
-            width: 250px;
-            max-height: 300px;
-            overflow-y: auto;
-            z-index: 500;
-            display: none;
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
-        }
-
-        .category-dropdown.show {
-            display: block;
-        }
-
-        .dropdown-item {
-            padding: 8px 12px;
-            font-size: 13px;
-            color: var(--text-secondary);
-            cursor: pointer;
-            border-radius: 4px;
-        }
-
-        .dropdown-item:hover {
-            background: var(--primary);
-            color: white;
-        }
-
-        .suggested-tags-area {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 8px;
-            padding: 12px;
-            background: #1C1C1E;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-
-        .active-filters {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 12px;
-            min-height: 32px;
-            /* Prevent layout jump */
-            padding-top: 12px;
-            border-top: 1px solid var(--border);
-        }
-
-        .filter-tag {
-            background: var(--primary);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-
         .grid-container {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-            gap: 24px;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 20px;
             padding-bottom: 40px;
         }
 
@@ -464,55 +465,17 @@
             cursor: pointer;
             transition: transform 0.2s, border-color 0.2s;
         }
+        .meme-card:hover { transform: translateY(-4px); border-color: var(--primary); }
 
-        .meme-card:hover {
-            transform: translateY(-4px);
-            border-color: var(--primary);
-            background: var(--card-hover);
-        }
-
-        .card-img {
-            height: 200px;
-            width: 100%;
-            object-fit: cover;
-            background: #2C2C2E;
-        }
-
-        .card-body {
-            padding: 16px;
-        }
-
-        .card-meta {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-        }
-
-        .card-tags {
-            display: flex;
-            gap: 4px;
-            overflow: hidden;
-            white-space: nowrap;
-            mask-image: linear-gradient(to right, black 80%, transparent 100%);
-        }
-
-        .mini-tag {
-            font-size: 10px;
-            padding: 2px 6px;
-            background: #3A3A3C;
-            border-radius: 4px;
-            color: #E5E5EA;
-        }
+        .card-img { height: 180px; width: 100%; object-fit: cover; background: #2C2C2E; }
+        .card-body { padding: 12px; }
+        .card-meta { font-size: 11px; color: var(--text-secondary); margin-bottom: 6px; display: flex; justify-content: space-between; }
+        .card-tags { display: flex; gap: 4px; overflow: hidden; }
+        .mini-tag { font-size: 9px; padding: 2px 5px; background: #3A3A3C; border-radius: 3px; color: #E5E5EA; }
 
         /* Modal */
         .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0, 0, 0, 0.8);
             backdrop-filter: blur(10px);
             z-index: 1000;
@@ -520,10 +483,7 @@
             align-items: center;
             justify-content: center;
         }
-
-        .modal-overlay.active {
-            display: flex;
-        }
+        .modal-overlay.active { display: flex; }
 
         .modal-content {
             background: black;
@@ -539,83 +499,48 @@
         }
 
         .modal-close {
-            position: absolute;
-            top: 16px;
-            right: 16px;
-            z-index: 10;
-            background: #3A3A3C;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            color: white;
+            position: absolute; top: 16px; right: 16px; z-index: 10;
+            background: #3A3A3C; border-radius: 50%; width: 32px; height: 32px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; color: white;
         }
+        .modal-close:hover { background: #48484A; }
 
-        .modal-close:hover {
-            background: #48484A;
-        }
-
-        /* Loading & Empty States */
+        /* States */
         .state-message {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            color: var(--text-secondary);
-            gap: 16px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; color: var(--text-secondary); gap: 16px;
         }
 
         .spinner {
-            width: 40px;
-            height: 40px;
+            width: 40px; height: 40px;
             border: 3px solid rgba(255, 255, 255, 0.1);
             border-top-color: var(--primary);
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         /* Toast */
         .toast {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
+            position: fixed; bottom: 24px; left: 50%;
             transform: translateX(-50%) translateY(100px);
-            background: #3A3A3C;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 50px;
-            font-size: 14px;
-            font-weight: 500;
-            opacity: 0;
-            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-            z-index: 2000;
-            border: 1px solid var(--border);
+            background: #3A3A3C; color: white;
+            padding: 12px 24px; border-radius: 50px;
+            font-size: 14px; font-weight: 500;
+            opacity: 0; transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 2000; border: 1px solid var(--border);
         }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
-        .toast.show {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
-        }
+        .active-filters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; min-height: 32px; padding-top: 12px; border-top: 1px solid var(--border); }
+        .filter-tag { background: var(--primary); color: white; padding: 4px 10px; border-radius: 20px; font-size: 12px; display: flex; align-items: center; gap: 6px; }
     </style>
 </head>
 
 <body>
-
-    <!-- Navbar -->
     <nav class="navbar">
-        <div class="logo">
-            <span>🎭</span> Meme.AI Admin
-        </div>
+        <div class="logo"><span>🎭</span> Meme.AI Admin</div>
         <div class="nav-links">
             <div class="nav-item active" onclick="app.switchView('pending')">
                 Pending Review <span id="pendingCount" style="opacity: 0.6; margin-left: 4px">(0)</span>
@@ -623,18 +548,14 @@
             <div class="nav-item" onclick="app.switchView('approved')">
                 Approved Gallery <span id="approvedCount" style="opacity: 0.6; margin-left: 4px">(0)</span>
             </div>
-            <div class="nav-item" onclick="app.switchView('tags')">
-                Tags
-            </div>
+            <div class="nav-item" onclick="app.switchView('tags')">Tags</div>
         </div>
         <div style="font-size: 12px; color: var(--text-secondary);">
             API: <span id="apiUrlDisplay">http://localhost:8000</span>
         </div>
     </nav>
 
-    <!-- Main Content -->
     <main class="main-content">
-
         <!-- PENDING VIEW -->
         <div id="pendingView" class="view active">
             <div id="pendingLoading" class="state-message">
@@ -649,16 +570,12 @@
             </div>
 
             <div id="pendingContent" class="pending-container" style="display: none;">
-                <!-- Image Side -->
                 <div class="image-section">
                     <img id="currentMemeImage" class="meme-image" src="" alt="Meme">
-                    <div
-                        style="position: absolute; top: 16px; left: 16px; background: rgba(0,0,0,0.6); color: white; padding: 4px 8px; border-radius: 6px; font-size: 12px;">
+                    <div style="position: absolute; top: 16px; left: 16px; background: rgba(0,0,0,0.6); color: white; padding: 4px 8px; border-radius: 6px; font-size: 12px;">
                         ID: <span id="currentMemeId">...</span>
                     </div>
                 </div>
-
-                <!-- Controls Side (Injected via JS for reuse) -->
                 <div id="pendingControls" class="controls-section"></div>
             </div>
         </div>
@@ -667,83 +584,50 @@
         <div id="approvedView" class="view">
             <div class="filter-section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                    <h3 style="font-size: 16px; font-weight: 600;">Filter by Category</h3>
-                    <button class="btn btn-secondary" onclick="app.loadMemes()"
-                        style="padding: 6px 12px; font-size: 12px;">🔄 Refresh</button>
+                    <h3 style="font-size: 16px; font-weight: 600;">Filter by Frontend Tags</h3>
+                    <button class="btn btn-secondary" onclick="app.loadMemes()" style="padding: 6px 12px; font-size: 12px;">🔄 Refresh</button>
                 </div>
 
-                <!-- Category Buttons -->
-                <div id="categoryFilters" class="category-filters">
-                    <!-- Injected via JS -->
+                <div id="categoryFilters" class="category-filters"></div>
+
+                <div class="input-group" style="margin: 16px 0;">
+                    <input type="text" id="tagSearchInput" placeholder="Search frontend tags..." autocomplete="off">
                 </div>
 
-                <!-- Search Bar -->
-                <div class="input-group" style="margin-bottom: 16px;">
-                    <input type="text" id="tagSearchInput" placeholder="Search specific tags..." autocomplete="off">
+                <div id="suggestedTags" class="suggested-tags-area" style="display: none; margin-bottom: 16px;"></div>
+
+                <div id="activeFilters" class="active-filters"></div>
                 </div>
 
-                <!-- Tag Count Filter -->
-                <div style="margin-bottom: 16px;">
-                    <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; display: block;">Filter by Tag Count</label>
-                    <select id="tagCountFilter" onchange="app.applyFilters()" style="width: 100%; padding: 10px 12px; background: var(--input-bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-size: 14px;">
-                        <option value="all">All Memes</option>
-                        <option value="under10">Under 10 ⚠️</option>
-                        <option value="11">11 tags</option>
-                        <option value="12">12 tags</option>
-                        <option value="13">13 tags</option>
-                        <option value="14">14 tags</option>
-                        <option value="15">15 tags</option>
-                        <option value="over15">Over 15 ⭐</option>
-                    </select>
+            <!-- Approved Gallery Filters -->
+            <div class="approved-filters">
+                <span class="filter-label">Show:</span>
+                <button class="filter-btn active" onclick="app.setApprovedFilter('all')">All</button>
+                <button class="filter-btn" onclick="app.setApprovedFilter('last1')">Last 1</button>
+                <button class="filter-btn" onclick="app.setApprovedFilter('last5')">Last 5</button>
+                <button class="filter-btn" onclick="app.setApprovedFilter('last10')">Last 10</button>
+                <span class="filter-label" style="margin-left: 12px;">Type:</span>
+                <button class="filter-btn" onclick="app.setApprovedFilter('customizable')">🎨 Customizable</button>
+                <button class="filter-btn" onclick="app.setApprovedFilter('rec_engine')">🚀 Rec Engine</button>
+                <button class="filter-btn" onclick="app.setApprovedFilter('both')">⚡ Both</button>
                 </div>
 
-                <!-- Recent Memes Filter -->
-                <div style="margin-bottom: 16px;">
-                    <label style="font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; display: block;">Show Recent</label>
-                    <select id="recentFilter" onchange="app.applyFilters()" style="width: 100%; padding: 10px 12px; background: var(--input-bg); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); font-size: 14px;">
-                        <option value="all">All Memes</option>
-                        <option value="1">Last 1 (most recent)</option>
-                        <option value="5">Last 5</option>
-                        <option value="10">Last 10</option>
-                        <option value="15">Last 15</option>
-                        <option value="20">Last 20</option>
-                    </select>
-                </div>
-
-                <!-- Search Results -->
-                <div id="suggestedTags" class="suggested-tags-area" style="display: none; margin-bottom: 16px;">
-                    <!-- Injected via JS -->
-                </div>
-
-                <!-- Active Filters -->
-                <div id="activeFilters" class="active-filters">
-                    <!-- Injected via JS -->
-                </div>
+            <div id="approvedGrid" class="grid-container"></div>
             </div>
 
-            <div id="approvedGrid" class="grid-container">
-                <!-- Memes injected here -->
-            </div>
-        </div>
-
-        <!-- TAGS MANAGEMENT VIEW -->
+        <!-- TAGS VIEW -->
         <div id="tagsView" class="view">
             <div class="filter-section">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
                     <h3 style="font-size: 16px; font-weight: 600;">Manage Custom Tags</h3>
-                    <button class="btn btn-danger" onclick="app.clearAllCustomTags()"
-                        style="padding: 6px 12px; font-size: 12px;">🗑️ Clear All</button>
+                    <button class="btn btn-danger" onclick="app.clearAllCustomTags()" style="padding: 6px 12px; font-size: 12px;">🗑️ Clear All</button>
                 </div>
                 <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 24px;">
-                    These are tags you've manually added. You can remove them here to clean up your "Custom" list.
+                    Custom tags you've manually added.
                 </p>
-
-                <div id="customTagsList" style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    <!-- Injected via JS -->
+                <div id="customTagsList" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
                 </div>
             </div>
-        </div>
-
     </main>
 
     <!-- EDIT MODAL -->
@@ -754,68 +638,26 @@
                 <div class="image-section">
                     <img id="modalMemeImage" class="meme-image" src="" alt="Meme">
                 </div>
-                <div id="modalControls" class="controls-section">
-                    <!-- Controls injected here -->
-                </div>
+                <div id="modalControls" class="controls-section"></div>
             </div>
         </div>
     </div>
-
-    <!-- TEMPLATE FOR CONTROLS -->
-    <template id="controlsTemplate">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h3>Tag Management</h3>
-            <span class="progress-indicator" style="font-size: 12px; color: var(--text-secondary);"></span>
-        </div>
-
-        <!-- Tags Display -->
-        <div>
-            <div class="tag-group">
-                <div class="tag-group-label">ML Visual Tags</div>
-                <div class="tags-container visual-tags-container"></div>
-            </div>
-            <div class="tag-group">
-                <div class="tag-group-label">ML Context Tags</div>
-                <div class="tags-container context-tags-container"></div>
-            </div>
-            <div class="tag-group">
-                <div class="tag-group-label">Manual / Custom Tags</div>
-                <div class="tags-container user-tags-container"></div>
-            </div>
-        </div>
-
-        <!-- Add Tags -->
-        <div class="tag-input-area">
-            <div class="tag-group-label">Add Tags</div>
-
-            <!-- Category Buttons for Adding -->
-            <div class="category-filters" id="addTagCategories">
-                <!-- Injected via JS -->
-            </div>
-
-            <!-- Search Bar for Adding -->
-            <div class="input-group" style="margin-top: 12px;">
-                <input type="text" id="addTagSearchInput" placeholder="Search tags to add..." autocomplete="off">
-            </div>
-            <div id="addTagSuggestions" class="suggested-tags-area" style="display: none; margin-bottom: 12px;"></div>
-
-            <!-- Manual Input -->
-            <div class="input-group">
-                <input type="text" class="manual-tag-input" placeholder="Type custom tag..." autocomplete="off">
-                <button class="btn btn-secondary add-tag-btn" style="padding: 8px 16px;">Add</button>
-            </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="action-bar">
-            <!-- Buttons injected based on context -->
-        </div>
-    </template>
 
     <div id="toast" class="toast">Action Successful</div>
 
     <script>
         const API_BASE = 'http://localhost:8000';
+
+        // Frontend tag categories with their colors
+        const FRONTEND_CATEGORIES = {
+            'emotion': { label: '😊 Emotion', btnClass: 'cat-btn-emotion', tagClass: 'tag-emotion' },
+            'source': { label: '🎬 Source', btnClass: 'cat-btn-source', tagClass: 'tag-source' },
+            'format': { label: '🖼️ Format', btnClass: 'cat-btn-format', tagClass: 'tag-format' },
+            'tone': { label: '🎭 Tone', btnClass: 'cat-btn-tone', tagClass: 'tag-tone' },
+            'situation': { label: '💼 Situation', btnClass: 'cat-btn-situation', tagClass: 'tag-situation' },
+            'subject': { label: '👤 Subject', btnClass: 'cat-btn-subject', tagClass: 'tag-subject' },
+            'vibe': { label: '⚡ Vibe', btnClass: 'cat-btn-vibe', tagClass: 'tag-vibe' },
+        };
 
         const app = {
             state: {
@@ -824,80 +666,70 @@
                 currentIndex: 0,
                 currentMeme: null,
                 isModalOpen: false,
-
-                tempTags: { visual: [], contextual: [], user: [] },
-
-                allKnownTags: new Set(),
-                predefinedTags: new Set(), // Store predefined tags separately
+                tempGeminiTags: [],
+                tempFrontendTags: {},
+                tempCustomTags: [],
+                tempUseCase: '',
+                tempMemeType: 'rec_engine',  // 'customizable', 'rec_engine', or 'both'
+                isEditingUseCase: false,
+                approvedFilter: 'all',  // 'all', 'last1', 'last5', 'last10', 'customizable', 'rec_engine', 'both'
+                frontendTagOptions: {},
                 customTags: [],
-
-                // Categorized Tags
-                tagCategories: {},
-
-                // Filter State
-                activeFilters: [], // Array of strings
+                allFrontendTags: new Set(),
+                activeFilters: [],
             },
 
-            init() {
-                this.loadCustomTags();
-                this.loadTagOptions();
+            async init() {
+                // Load tags from backend first
+                await Promise.all([
+                    this.loadCustomTags(),
+                    this.loadFrontendTags()
+                ]);
+                
+                // Then load memes
                 this.loadMemes();
 
-                // Close dropdowns when clicking outside
                 document.addEventListener('click', (e) => {
                     if (!e.target.closest('.category-btn-wrapper')) {
                         document.querySelectorAll('.category-dropdown').forEach(el => el.classList.remove('show'));
                     }
                 });
 
-                // Filter Search Listener
-                const filterInput = document.getElementById('tagSearchInput');
-                filterInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
+                document.getElementById('tagSearchInput')?.addEventListener('input', (e) => {
                         this.searchFilterTags(e.target.value);
-                    }
                 });
             },
 
             switchView(viewName) {
                 document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
                 document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-
                 document.getElementById(`${viewName}View`).classList.add('active');
 
-                // Update Nav
                 const navItems = document.querySelectorAll('.nav-item');
                 if (viewName === 'pending') navItems[0].classList.add('active');
                 else if (viewName === 'approved') navItems[1].classList.add('active');
-                else if (viewName === 'tags') {
-                    navItems[2].classList.add('active');
-                    this.renderTagsView();
-                }
+                else if (viewName === 'tags') { navItems[2].classList.add('active'); this.renderTagsView(); }
             },
 
-            // Data Loading
             async loadMemes() {
                 try {
                     document.getElementById('pendingLoading').style.display = 'flex';
 
-                    const [pendingRes, approvedRes] = await Promise.all([
-                        fetch(`${API_BASE}/memes?status=pending&limit=100`),
-                        fetch(`${API_BASE}/memes?status=approved&limit=1000`)
+                    const [pendingRes, pendingAnalysisRes, approvedRes] = await Promise.all([
+                        fetch(`${API_BASE}/memes?status=pending&limit=100&include_all_types=true`),
+                        fetch(`${API_BASE}/memes?status=pending_analysis&limit=100&include_all_types=true`),
+                        fetch(`${API_BASE}/memes?status=approved&limit=1000&include_all_types=true`)
                     ]);
 
-                    const pendingData = await pendingRes.json();
-                    const approvedData = await approvedRes.json();
+                    const pendingMemes = (await pendingRes.json()).memes || [];
+                    const pendingAnalysisMemes = (await pendingAnalysisRes.json()).memes || [];
+                    // Combine both - pending_analysis memes are still being processed by Gemini
+                    this.state.pendingMemes = [...pendingAnalysisMemes, ...pendingMemes];
+                    this.state.approvedMemes = (await approvedRes.json()).memes || [];
 
-                    this.state.pendingMemes = pendingData.memes || [];
-                    this.state.approvedMemes = approvedData.memes || [];
-
-                    this.aggregateTags([...this.state.pendingMemes, ...this.state.approvedMemes]);
-
-                    // Update UI
                     document.getElementById('pendingCount').textContent = `(${this.state.pendingMemes.length})`;
                     document.getElementById('approvedCount').textContent = `(${this.state.approvedMemes.length})`;
 
-                    // Render Pending
                     if (this.state.pendingMemes.length > 0) {
                         this.state.currentIndex = 0;
                         this.loadPendingMemeUI();
@@ -909,510 +741,415 @@
                     }
                     document.getElementById('pendingLoading').style.display = 'none';
 
-                    // Render Approved Grid
                     this.applyFilters();
-
                 } catch (err) {
                     console.error(err);
                     this.showToast('Error loading memes: ' + err.message, true);
                 }
             },
 
-            aggregateTags(memes) {
-                // Start with predefined tags
-                this.state.allKnownTags = new Set(this.state.predefinedTags);
-
-                memes.forEach(meme => {
-                    (meme.visual_tags || []).forEach(t => this.state.allKnownTags.add(t));
-                    (meme.contextual_tags || []).forEach(t => this.state.allKnownTags.add(t));
-                    (meme.user_tags || []).forEach(t => this.state.allKnownTags.add(t));
-                });
-                this.state.customTags.forEach(t => this.state.allKnownTags.add(t));
-
-                // Update Custom Tags Category - ONLY show tags from localStorage
-                // Don't include random meme tags that aren't predefined
-                this.state.tagCategories['custom'] = [...this.state.customTags];
-                this.renderCategoryButtons();
-            },
-
-            loadCustomTags() {
-                // Load from Firestore (persists across server restarts)
-                fetch(`${API_BASE}/tags/custom`)
-                    .then(res => res.json())
-                    .then(data => {
+            async loadCustomTags() {
+                try {
+                    const res = await fetch(`${API_BASE}/tags/custom`);
+                    const data = await res.json();
                         this.state.customTags = data.tags || [];
-                        // Also sync to localStorage as backup
-                        localStorage.setItem('customTags', JSON.stringify(this.state.customTags));
-                        this.aggregateTags();
-                    })
-                    .catch(err => {
-                        // Fallback to localStorage if API fails
-                        const stored = localStorage.getItem('customTags');
-                        if (stored) {
-                            this.state.customTags = JSON.parse(stored);
-                        } else {
+                } catch (err) {
+                    console.error('Failed to load custom tags:', err);
                             this.state.customTags = [];
                         }
-                    });
             },
 
-            async loadTagOptions() {
+            async loadFrontendTags() {
                 try {
-                    const res = await fetch(`${API_BASE}/tags/options`);
+                    const res = await fetch(`${API_BASE}/tags/frontend`);
                     if (res.ok) {
                         const data = await res.json();
-                        this.state.tagCategories = data;
-
-                        // Flatten for search/autocomplete
-                        Object.values(data).flat().forEach(t => {
-                            this.state.predefinedTags.add(t);
-                            this.state.allKnownTags.add(t);
-                        });
-
+                        // Convert { category: { description, tags } } to { category: [tags] }
+                        for (const [cat, info] of Object.entries(data)) {
+                            this.state.frontendTagOptions[cat] = info.tags || [];
+                            (info.tags || []).forEach(t => this.state.allFrontendTags.add(t));
+                        }
                         this.renderCategoryButtons();
                     }
-                } catch (err) {
-                    console.error('Failed to load tag options:', err);
-                }
+                } catch (err) { console.error('Failed to load frontend tags:', err); }
             },
 
-            saveCustomTag(tag) {
+            async saveCustomTag(tag) {
                 if (!this.state.customTags.includes(tag)) {
                     this.state.customTags.push(tag);
-                    // Save to both Firestore and localStorage
-                    fetch(`${API_BASE}/tags/custom`, {
+                    try {
+                        await fetch(`${API_BASE}/tags/custom`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(this.state.customTags)
                     });
-                    localStorage.setItem('customTags', JSON.stringify(this.state.customTags));
-                    this.state.allKnownTags.add(tag);
+                    } catch (err) {
+                        console.error('Failed to save custom tag:', err);
+                    }
                 }
             },
 
-            // ================= FILTERING LOGIC =================
+            // ================= CONTROLS RENDERING =================
 
-            renderCategoryButtons() {
-                const container = document.getElementById('categoryFilters');
-                if (!container) return;
+            initTempData(meme) {
+                // Gemini tags = visual_tags + contextual_tags combined
+                this.state.tempGeminiTags = [...(meme.visual_tags || []), ...(meme.contextual_tags || [])];
+                this.state.tempUseCase = meme.use_case || '';
+                // Use meme_type if available, otherwise derive from is_template
+                this.state.tempMemeType = meme.meme_type || (meme.is_template ? 'customizable' : 'rec_engine');
+                this.state.isEditingUseCase = false;
 
-                const labels = {
-                    'visual_type': '📷 Type',
-                    'visual_people': '👥 People',
-                    'visual_action': '🏃 Action',
-                    'visual_format': '🖼️ Format',
-                    'context_emotion': '😊 Emotion',
-                    'context_vibe': '✨ Vibe',
-                    'context_situation': '🤔 Situation',
-                    'context_social': '💬 Social',
-                    'custom': '🏷️ Custom/Other'
-                };
-
-                // Ensure 'custom' exists
-                if (!this.state.tagCategories['custom']) this.state.tagCategories['custom'] = [];
-
-                container.innerHTML = Object.keys(labels).map(key => {
-                    const tags = this.state.tagCategories[key] || [];
-                    if (tags.length === 0) return ''; // Skip empty categories
-
-                    return `
-                        <div class="category-btn-wrapper">
-                            <button class="category-btn" onclick="app.toggleDropdown('${key}')">
-                                ${labels[key]}
-                            </button>
-                            <div id="dropdown-${key}" class="category-dropdown">
-                                ${tags.sort().map(tag => `
-                                    <div class="dropdown-item" onclick="app.addFilter('${tag}')">${tag}</div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            },
-
-            toggleDropdown(key) {
-                const dropdown = document.getElementById(`dropdown-${key}`);
-                const wasOpen = dropdown.classList.contains('show');
-
-                // Close all others
-                document.querySelectorAll('.category-dropdown').forEach(el => el.classList.remove('show'));
-
-                if (!wasOpen) {
-                    dropdown.classList.add('show');
+                // Initialize frontend tags categories (must match backend FRONTEND_TAGS)
+                this.state.tempFrontendTags = { emotion: [], source: [], format: [], tone: [], situation: [], subject: [], vibe: [] };
+                
+                // Load frontend_tags from the dedicated field and categorize them
+                const frontendTags = meme.frontend_tags || [];
+                for (const tag of frontendTags) {
+                    for (const [cat, tags] of Object.entries(this.state.frontendTagOptions)) {
+                        if (tags.includes(tag)) {
+                            this.state.tempFrontendTags[cat].push(tag);
+                            break;
+                        }
+                    }
                 }
+                
+                // Custom tags come from user_tags (descriptive tags like Gemini tags)
+                this.state.tempCustomTags = [...(meme.user_tags || [])];
             },
-
-            searchFilterTags(query) {
-                const q = query.toLowerCase().trim();
-                const container = document.getElementById('suggestedTags');
-
-                if (!q) {
-                    container.style.display = 'none';
-                    return;
-                }
-
-                const allTags = Array.from(this.state.allKnownTags);
-                const matches = allTags.filter(t => t.toLowerCase().includes(q));
-
-                if (matches.length === 0) {
-                    container.innerHTML = '<span style="color:var(--text-secondary); font-size:12px;">No matching tags found</span>';
-                    container.style.display = 'flex';
-                    return;
-                }
-
-                container.innerHTML = matches.map(tag => `
-                    <div class="preset-tag" onclick="app.addFilter('${tag}')">${tag}</div>
-                `).join('');
-                container.style.display = 'flex';
-            },
-
-            addFilter(tag) {
-                if (!this.state.activeFilters.includes(tag)) {
-                    this.state.activeFilters.push(tag);
-                    this.renderActiveFilters();
-                    this.applyFilters();
-                }
-                // Close dropdowns
-                document.querySelectorAll('.category-dropdown').forEach(el => el.classList.remove('show'));
-                // Clear search
-                document.getElementById('tagSearchInput').value = '';
-                document.getElementById('suggestedTags').style.display = 'none';
-            },
-
-            removeFilter(tag) {
-                this.state.activeFilters = this.state.activeFilters.filter(t => t !== tag);
-                this.renderActiveFilters();
-                this.applyFilters();
-            },
-
-            renderActiveFilters() {
-                const container = document.getElementById('activeFilters');
-                container.innerHTML = this.state.activeFilters.map(tag => `
-                    <div class="filter-tag">
-                        ${tag}
-                        <span style="cursor:pointer;font-weight:bold" onclick="app.removeFilter('${tag}')">×</span>
-                    </div>
-                `).join('');
-            },
-
-            applyFilters() {
-                let filtered = this.state.approvedMemes;
-
-                // Sort by approved_at time (most recent first), fallback to upload_time
-                filtered = [...filtered].sort((a, b) => {
-                    const timeA = a.approved_at ? new Date(a.approved_at).getTime() : 
-                                  (a.upload_time ? new Date(a.upload_time).getTime() : 0);
-                    const timeB = b.approved_at ? new Date(b.approved_at).getTime() : 
-                                  (b.upload_time ? new Date(b.upload_time).getTime() : 0);
-                    return timeB - timeA; // Descending (newest first)
-                });
-
-                // Filter by recent count
-                const recentFilter = document.getElementById('recentFilter')?.value || 'all';
-                if (recentFilter !== 'all') {
-                    const count = parseInt(recentFilter);
-                    filtered = filtered.slice(0, count);
-                }
-
-                // Filter by tags
-                if (this.state.activeFilters.length > 0) {
-                    filtered = filtered.filter(meme => {
-                        const memeTags = [
-                            ...(meme.visual_tags || []),
-                            ...(meme.contextual_tags || []),
-                            ...(meme.user_tags || [])
-                        ];
-                        // Match ALL filters (AND logic)
-                        return this.state.activeFilters.every(filter => memeTags.includes(filter));
-                    });
-                }
-
-                // Filter by tag count
-                const tagCountFilter = document.getElementById('tagCountFilter')?.value || 'all';
-                if (tagCountFilter !== 'all') {
-                    filtered = filtered.filter(meme => {
-                        const count = (meme.visual_tags?.length || 0) + (meme.contextual_tags?.length || 0) + (meme.user_tags?.length || 0);
-                        if (tagCountFilter === 'under10') return count < 10;
-                        if (tagCountFilter === 'over15') return count > 15;
-                        // Exact number match (11, 12, 13, 14, 15)
-                        return count === parseInt(tagCountFilter);
-                    });
-                }
-
-                this.renderApprovedGrid(filtered);
-            },
-
-            // ================= PENDING FLOW =================
 
             loadPendingMemeUI() {
                 const meme = this.state.pendingMemes[this.state.currentIndex];
                 if (!meme) return;
 
                 this.state.currentMeme = meme;
-                this.initTempTags(meme);
+                this.initTempData(meme);
 
                 document.getElementById('currentMemeImage').src = meme.firebase_image_url || meme.image_url;
                 document.getElementById('currentMemeId').textContent = meme.id;
 
-                const container = document.getElementById('pendingControls');
-                this.renderControls(container, 'pending');
-            },
-
-            // ================= APPROVED FLOW =================
-
-            renderApprovedGrid(memes) {
-                const grid = document.getElementById('approvedGrid');
-                if (memes.length === 0) {
-                    grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px;">No memes found matching filters</div>';
-                    return;
-                }
-
-                grid.innerHTML = memes.map(meme => {
-                    const tagCount = (meme.visual_tags?.length || 0) + (meme.contextual_tags?.length || 0) + (meme.user_tags?.length || 0);
-                    const tagColor = tagCount < 10 ? '#FF453A' : tagCount <= 15 ? '#FF9F0A' : '#30D158';
-                    return `
-                    <div class="meme-card" onclick="app.openModal('${meme.id}')">
-                        <img class="card-img" src="${meme.firebase_image_url || meme.image_url}" loading="lazy">
-                        <div class="card-body">
-                            <div class="card-meta">
-                                <span>${meme.id}</span>
-                                <span style="display: flex; align-items: center; gap: 8px;">
-                                    <span style="color: ${tagColor}; font-weight: 600;">🏷️ ${tagCount}</span>
-                                    <span>👁️ ${meme.total_views || 0}</span>
-                                </span>
-                            </div>
-                            <div class="card-tags">
-                                ${(meme.user_tags || []).slice(0, 3).map(t => `<span class="mini-tag" style="color:#0A84FF">${t}</span>`).join('')}
-                                ${(meme.visual_tags || []).slice(0, 2).map(t => `<span class="mini-tag">${t}</span>`).join('')}
-                            </div>
-                        </div>
-                    </div>
-                `}).join('');
-            },
-
-            openModal(memeId) {
-                const meme = this.state.approvedMemes.find(m => m.id === memeId);
-                if (!meme) return;
-
-                this.state.currentMeme = meme;
-                this.state.isModalOpen = true;
-                this.initTempTags(meme);
-
-                document.getElementById('modalMemeImage').src = meme.firebase_image_url || meme.image_url;
-                document.getElementById('editModal').classList.add('active');
-
-                const container = document.getElementById('modalControls');
-                this.renderControls(container, 'modal');
-            },
-
-            closeModal() {
-                document.getElementById('editModal').classList.remove('active');
-                this.state.isModalOpen = false;
-                this.state.currentMeme = null;
-            },
-
-            // ================= SHARED CONTROLS LOGIC =================
-
-            calculateAverageTags() {
-                const memes = this.state.approvedMemes;
-                if (!memes || memes.length === 0) return "0.0";
-                
-                const total = memes.reduce((acc, meme) => {
-                    const count = (meme.visual_tags?.length || 0) + 
-                                  (meme.contextual_tags?.length || 0) + 
-                                  (meme.user_tags?.length || 0);
-                    return acc + count;
-                }, 0);
-                
-                return (total / memes.length).toFixed(1);
-            },
-
-            initTempTags(meme) {
-                // Start with ML-generated tags
-                this.state.tempTags = {
-                    visual: [...(meme.visual_tags || [])],
-                    contextual: [...(meme.contextual_tags || [])],
-                    user: []
-                };
-
-                // Re-categorize user_tags - check if they're actually predefined ML tags
-                const userTags = meme.user_tags || [];
-                for (const tag of userTags) {
-                    const lowerTag = tag.toLowerCase();
-                    let foundCategory = null;
-
-                    // Check if this tag is in predefined ML tags
-                    for (const predefinedTag of this.state.predefinedTags) {
-                        if (predefinedTag.toLowerCase() === lowerTag) {
-                            // Found it! Determine which category
-                            for (const [cat, tags] of Object.entries(this.state.tagCategories)) {
-                                if (cat === 'custom') continue;
-                                
-                                if (tags.some(t => t.toLowerCase() === lowerTag)) {
-                                    if (cat.startsWith('visual')) {
-                                        foundCategory = 'visual';
-                                    } else if (cat.startsWith('context')) {
-                                        foundCategory = 'contextual';
-                                    }
-                                    break;
-                                }
-                            }
-                            break;
-                        }
-                    }
-
-                    // Add to the correct category
-                    if (foundCategory === 'visual' && !this.state.tempTags.visual.includes(tag)) {
-                        this.state.tempTags.visual.push(tag);
-                    } else if (foundCategory === 'contextual' && !this.state.tempTags.contextual.includes(tag)) {
-                        this.state.tempTags.contextual.push(tag);
-                    } else if (!foundCategory) {
-                        // Truly a custom tag
-                        this.state.tempTags.user.push(tag);
-                    }
-                }
-            },
-
-            calculateCurrentTags() {
-                if (!this.state.tempTags) return 0;
-                return (this.state.tempTags.visual?.length || 0) + 
-                       (this.state.tempTags.contextual?.length || 0) + 
-                       (this.state.tempTags.user?.length || 0);
-            },
-
-            updateTagStats(container, context) {
-                const current = this.calculateCurrentTags();
-                const avg = this.calculateAverageTags();
-                const progressEl = container.querySelector('.progress-indicator');
-                
-                let text = `Current: ${current} • Target: ${avg}`;
-                if (context === 'pending') {
-                    text = `${this.state.currentIndex + 1} of ${this.state.pendingMemes.length} • ${text}`;
-                }
-                
-                progressEl.textContent = text;
-                
-                // Color code based on target
-                if (current < avg * 0.5) progressEl.style.color = '#FF453A'; // Red (too few)
-                else if (current >= avg) progressEl.style.color = '#30D158'; // Green (good)
-                else progressEl.style.color = '#FF9F0A'; // Orange (getting there)
+                this.renderControls(document.getElementById('pendingControls'), 'pending');
             },
 
             renderControls(container, context) {
-                const template = document.getElementById('controlsTemplate');
-                container.innerHTML = '';
-                container.appendChild(template.content.cloneNode(true));
+                const meme = this.state.currentMeme;
+                const progress = context === 'pending' ? `${this.state.currentIndex + 1} of ${this.state.pendingMemes.length}` : '';
+                const memeType = this.state.tempMemeType;
 
-                // Initial stats render
-                this.updateTagStats(container, context);
+                container.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="font-size: 15px;">Meme Details</h3>
+                        <span class="progress-indicator">${progress}</span>
+                    </div>
 
-                this.renderTagList(container, 'visual', 'visual-tags-container');
-                this.renderTagList(container, 'contextual', 'context-tags-container');
-                this.renderTagList(container, 'user', 'user-tags-container');
+                    <!-- MEME TYPE TOGGLE -->
+                    <div class="meme-type-toggle">
+                        <span style="font-size: 12px; color: var(--text-secondary); margin-right: 8px;">Type:</span>
+                        <button class="type-btn customizable ${memeType === 'customizable' ? 'active' : ''}" onclick="app.setMemeType('customizable')">
+                            🎨 Customizable
+                        </button>
+                        <button class="type-btn rec_engine ${memeType === 'rec_engine' ? 'active' : ''}" onclick="app.setMemeType('rec_engine')">
+                            🚀 Rec Engine
+                        </button>
+                        <button class="type-btn both ${memeType === 'both' ? 'active' : ''}" onclick="app.setMemeType('both')">
+                            ⚡ Both
+                        </button>
+                            </div>
 
-                const manualInput = container.querySelector('.manual-tag-input');
-                const searchInput = container.querySelector('#addTagSearchInput');
-                const addBtn = container.querySelector('.add-tag-btn');
+                    <!-- GEMINI TAGS -->
+                    <div>
+                        <div class="section-header">🤖 Gemini Tags</div>
+                        <div class="tags-container" id="geminiTagsContainer"></div>
+                            </div>
 
-                manualInput.onkeypress = (e) => { if (e.key === 'Enter') this.handleAddTag(manualInput, container); };
-                addBtn.onclick = () => this.handleAddTag(manualInput, container);
+                    <!-- GEMINI USE CASE -->
+                    <div class="section-divider">
+                        <div class="section-header">💬 Gemini Use Case</div>
+                        <div class="use-case-box" id="useCaseBox"></div>
+                        </div>
 
-                // Search Listener
-                searchInput.oninput = (e) => this.searchAddTags(e.target.value, container);
+                    <!-- FRONTEND TAGS -->
+                    <div class="section-divider">
+                        <div class="section-header">🏷️ Frontend Tags</div>
+                        <div id="frontendTagsContainer"></div>
+                    </div>
 
-                // Render Category Buttons for Adding
+                    <!-- CUSTOM TAGS -->
+                    <div class="section-divider">
+                        <div class="section-header">✏️ Custom Tags</div>
+                        <div id="customTagsContainer"></div>
+                    </div>
+
+                    <!-- ADD TAGS -->
+                    <div class="section-divider">
+                        <div class="section-header">➕ Add Tags</div>
+                        <div class="category-filters" id="addTagCategories"></div>
+                        <div class="input-group" style="margin-top: 10px;">
+                            <input type="text" id="addTagSearch" placeholder="Search frontend tags..." autocomplete="off">
+                        </div>
+                        <div id="addTagSuggestions" class="suggested-tags-area" style="display: none; margin-top: 8px;"></div>
+                        <div class="input-group" style="margin-top: 10px;">
+                            <input type="text" id="customTagInput" placeholder="Type custom tag..." autocomplete="off">
+                            <button class="btn btn-secondary" onclick="app.addCustomTag()" style="padding: 8px 14px;">Add</button>
+                        </div>
+                    </div>
+
+                    <!-- ACTIONS -->
+                    <div class="action-bar" id="actionBar"></div>
+                `;
+
+                this.renderGeminiTags(container);
+                this.renderUseCase(container);
+                this.renderFrontendTags(container);
                 this.renderAddTagButtons(container);
+                this.renderActionBar(container, context);
 
-                const actionBar = container.querySelector('.action-bar');
-                if (context === 'pending') {
-                    actionBar.innerHTML = `
-            <!-- Actions -->
-            <div style="margin-top: auto; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
-                <button class="btn btn-success" onclick="app.approveCurrent()" style="grid-column: span 3; padding: 12px; font-weight: 600;">✅ Approve & Next</button>
-                <button class="btn btn-danger" onclick="app.rejectCurrent()" style="white-space: nowrap;">❌ Reject</button>
-                <button class="btn btn-secondary" onclick="app.prevPending()" style="white-space: nowrap;">⬅️ Prev</button>
-                <button class="btn btn-secondary" onclick="app.skipCurrent()" style="white-space: nowrap;">Skip ➡️</button>
-            </div>        `;
+                // Search listener
+                container.querySelector('#addTagSearch').oninput = (e) => this.searchAddTags(e.target.value, container);
+                container.querySelector('#customTagInput').onkeypress = (e) => { if (e.key === 'Enter') this.addCustomTag(); };
+                
+                // Make sure suggestions are hidden initially
+                const suggestions = container.querySelector('#addTagSuggestions');
+                if (suggestions) suggestions.style.display = 'none';
+            },
+
+            renderGeminiTags(container) {
+                const el = container.querySelector('#geminiTagsContainer');
+                el.innerHTML = this.state.tempGeminiTags.map(tag => `
+                    <span class="tag tag-gemini">
+                        ${tag}
+                        <span class="tag-remove" onclick="app.removeGeminiTag('${tag}')">×</span>
+                    </span>
+                `).join('') || '<span style="color: var(--text-secondary); font-size: 12px;">No Gemini tags</span>';
+            },
+
+            renderUseCase(container) {
+                const box = container.querySelector('#useCaseBox');
+                if (this.state.isEditingUseCase) {
+                    box.innerHTML = `
+                        <div class="use-case-display">
+                            <textarea class="use-case-input" id="useCaseInput">${this.state.tempUseCase}</textarea>
+                            <button class="edit-btn" onclick="app.saveUseCase()">Save</button>
+                            <button class="edit-btn" onclick="app.cancelEditUseCase()">Cancel</button>
+                        </div>
+                    `;
                 } else {
-                    actionBar.innerHTML = `
-                        <button class="btn btn-primary btn-full" onclick="app.saveModalChanges()">💾 Save Changes</button>
-                        <button class="btn btn-danger" onclick="app.deleteCurrent()">🗑️ Delete Meme</button>
+                    box.innerHTML = `
+                        <div class="use-case-display">
+                            <span class="use-case-text">${this.state.tempUseCase || 'No use case description'}</span>
+                            <button class="edit-btn" onclick="app.editUseCase()">✏️ Edit</button>
+                        </div>
                     `;
                 }
             },
 
-            renderTagList(container, type, className) {
-                const list = container.querySelector(`.${className}`);
-                const tags = this.state.tempTags[type];
-                const typeClass = type === 'visual' ? 'tag-visual' : type === 'contextual' ? 'tag-context' : 'tag-user';
+            editUseCase() {
+                this.state.isEditingUseCase = true;
+                const container = this.state.isModalOpen ? document.getElementById('modalControls') : document.getElementById('pendingControls');
+                this.renderUseCase(container);
+            },
 
-                list.innerHTML = tags.map(t => `
-                    <span class="tag ${typeClass}">
-                        ${t}
-                        <span class="tag-remove" onclick="app.removeTag('${type}', '${t}', this)">×</span>
-                    </span>
-                `).join('');
+            saveUseCase() {
+                const container = this.state.isModalOpen ? document.getElementById('modalControls') : document.getElementById('pendingControls');
+                this.state.tempUseCase = container.querySelector('#useCaseInput').value;
+                this.state.isEditingUseCase = false;
+                this.renderUseCase(container);
+            },
+
+            cancelEditUseCase() {
+                this.state.isEditingUseCase = false;
+                const container = this.state.isModalOpen ? document.getElementById('modalControls') : document.getElementById('pendingControls');
+                this.renderUseCase(container);
+            },
+
+            setMemeType(memeType) {
+                this.state.tempMemeType = memeType;
+                const container = this.state.isModalOpen ? document.getElementById('modalControls') : document.getElementById('pendingControls');
+                // Re-render the toggle buttons
+                const toggleHtml = `
+                    <span style="font-size: 12px; color: var(--text-secondary); margin-right: 8px;">Type:</span>
+                    <button class="type-btn customizable ${memeType === 'customizable' ? 'active' : ''}" onclick="app.setMemeType('customizable')">
+                        🎨 Customizable
+                    </button>
+                    <button class="type-btn rec_engine ${memeType === 'rec_engine' ? 'active' : ''}" onclick="app.setMemeType('rec_engine')">
+                        🚀 Rec Engine
+                    </button>
+                    <button class="type-btn both ${memeType === 'both' ? 'active' : ''}" onclick="app.setMemeType('both')">
+                        ⚡ Both
+                    </button>
+                `;
+                const toggleEl = container.querySelector('.meme-type-toggle');
+                if (toggleEl) toggleEl.innerHTML = toggleHtml;
+            },
+
+            renderFrontendTags(container) {
+                const el = container.querySelector('#frontendTagsContainer');
+                let html = '';
+
+                for (const [cat, config] of Object.entries(FRONTEND_CATEGORIES)) {
+                    const tags = this.state.tempFrontendTags[cat] || [];
+                    if (tags.length > 0) {
+                        html += `<div style="margin-bottom: 8px;">
+                            ${tags.map(tag => `
+                                <span class="tag ${config.tagClass}">
+                                    ${tag}
+                                    <span class="tag-remove" onclick="app.removeFrontendTag('${cat}', '${tag}')">×</span>
+                                </span>
+                            `).join('')}
+                        </div>`;
+                    }
+                }
+
+                el.innerHTML = html || '<span style="color: var(--text-secondary); font-size: 12px;">No frontend tags</span>';
                 
-                // Update stats whenever tags render
-                this.updateTagStats(container);
+                // Also render custom tags
+                this.renderCustomTagsDisplay(container);
+            },
+
+            renderCustomTagsDisplay(container) {
+                const el = container.querySelector('#customTagsContainer');
+                if (!el) return;
+                
+                if (this.state.tempCustomTags.length > 0) {
+                    el.innerHTML = `<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        ${this.state.tempCustomTags.map(tag => `
+                            <span class="tag tag-custom-display">
+                                ${tag}
+                                <span class="tag-remove" onclick="app.removeCustomTag('${tag}')">×</span>
+                            </span>
+                        `).join('')}
+                    </div>`;
+                } else {
+                    el.innerHTML = '<span style="color: var(--text-secondary); font-size: 12px;">No custom tags</span>';
+                }
             },
 
             renderAddTagButtons(container) {
                 const wrapper = container.querySelector('#addTagCategories');
-                if (!wrapper) return;
+                let html = '';
 
-                const labels = {
-                    'visual_type': '📷 Type',
-                    'visual_people': '👥 People',
-                    'visual_action': '🏃 Action',
-                    'visual_format': '🖼️ Format',
-                    'context_emotion': '😊 Emotion',
-                    'context_vibe': '✨ Vibe',
-                    'context_situation': '🤔 Situation',
-                    'context_social': '💬 Social',
-                    'custom': '🏷️ Custom'
-                };
-
-                wrapper.innerHTML = Object.keys(labels).map(key => {
-                    const tags = this.state.tagCategories[key] || [];
-                    if (tags.length === 0 && key !== 'custom') return ''; // Always show custom if desired, or check length
-
-                    return `
+                for (const [cat, config] of Object.entries(FRONTEND_CATEGORIES)) {
+                    const tags = Array.isArray(this.state.frontendTagOptions[cat]) ? this.state.frontendTagOptions[cat] : [];
+                    html += `
                         <div class="category-btn-wrapper">
-                            <button class="category-btn" onclick="app.toggleAddDropdown('${key}', this)">
-                                ${labels[key]}
+                            <button class="category-btn ${config.btnClass}" onclick="app.toggleAddDropdown('${cat}', this)">
+                                ${config.label}
                             </button>
                             <div class="category-dropdown">
-                                ${tags.sort().map(tag => `
-                                    <div class="dropdown-item" onclick="app.addTagFromDropdown('${tag}', this)">${tag}</div>
+                                ${[...tags].sort().map(tag => `
+                                    <div class="dropdown-item" onclick="app.addFrontendTag('${cat}', '${tag}')">${tag}</div>
                                 `).join('')}
                             </div>
                         </div>
                     `;
-                }).join('');
+                }
+
+                // Custom dropdown
+                const customTags = Array.isArray(this.state.customTags) ? this.state.customTags : [];
+                html += `
+                    <div class="category-btn-wrapper">
+                        <button class="category-btn cat-btn-custom" onclick="app.toggleAddDropdown('custom', this)">
+                            🏷️ Custom
+                        </button>
+                        <div class="category-dropdown">
+                            ${customTags.length > 0 ? [...customTags].sort().map(tag => `
+                                <div class="dropdown-item" onclick="app.addExistingCustomTag('${tag}')">${tag}</div>
+                            `).join('') : '<div style="padding: 8px; color: var(--text-secondary); font-size: 12px;">No custom tags yet</div>'}
+                        </div>
+                    </div>
+                `;
+
+                wrapper.innerHTML = html;
             },
 
-            searchAddTags(query, container) {
-                const q = query.toLowerCase().trim();
-                const suggestions = container.querySelector('#addTagSuggestions');
+            renderActionBar(container, context) {
+                const actionBar = container.querySelector('#actionBar');
+                if (context === 'pending') {
+                    actionBar.innerHTML = `
+                        <button class="btn btn-success" onclick="app.approveCurrent()" style="grid-column: span 3;">✅ Approve & Next</button>
+                        <button class="btn btn-danger" onclick="app.rejectCurrent()">❌ Reject</button>
+                        <button class="btn btn-secondary" onclick="app.prevPending()">⬅️ Prev</button>
+                        <button class="btn btn-secondary" onclick="app.skipCurrent()">Skip ➡️</button>
+                    `;
+                } else {
+                    actionBar.innerHTML = `
+                        <button class="btn btn-primary" onclick="app.saveModalChanges()" style="grid-column: span 2;">💾 Save Changes</button>
+                        <button class="btn btn-danger" onclick="app.deleteCurrent()">🗑️ Delete</button>
+                    `;
+                }
+            },
 
-                if (!q) {
-                    suggestions.style.display = 'none';
+            // ================= TAG ACTIONS =================
+
+            removeGeminiTag(tag) {
+                this.state.tempGeminiTags = this.state.tempGeminiTags.filter(t => t !== tag);
+                const container = this.state.isModalOpen ? document.getElementById('modalControls') : document.getElementById('pendingControls');
+                this.renderGeminiTags(container);
+            },
+
+            removeFrontendTag(cat, tag) {
+                this.state.tempFrontendTags[cat] = this.state.tempFrontendTags[cat].filter(t => t !== tag);
+                const container = this.state.isModalOpen ? document.getElementById('modalControls') : document.getElementById('pendingControls');
+                this.renderFrontendTags(container);
+            },
+
+            removeCustomTag(tag) {
+                this.state.tempCustomTags = this.state.tempCustomTags.filter(t => t !== tag);
+                const container = this.state.isModalOpen ? document.getElementById('modalControls') : document.getElementById('pendingControls');
+                this.renderCustomTagsDisplay(container);
+            },
+
+            addFrontendTag(cat, tag) {
+                if (!this.state.tempFrontendTags[cat].includes(tag)) {
+                    this.state.tempFrontendTags[cat].push(tag);
+                    const container = this.state.isModalOpen ? document.getElementById('modalControls') : document.getElementById('pendingControls');
+                    this.renderFrontendTags(container);
+                }
+                document.querySelectorAll('.category-dropdown').forEach(el => el.classList.remove('show'));
+            },
+
+            addExistingCustomTag(tag) {
+                if (!this.state.tempCustomTags.includes(tag)) {
+                    this.state.tempCustomTags.push(tag);
+                    const container = this.state.isModalOpen ? document.getElementById('modalControls') : document.getElementById('pendingControls');
+                    this.renderCustomTagsDisplay(container);
+                }
+                document.querySelectorAll('.category-dropdown').forEach(el => el.classList.remove('show'));
+            },
+
+            async addCustomTag() {
+                const container = this.state.isModalOpen ? document.getElementById('modalControls') : document.getElementById('pendingControls');
+                const input = container.querySelector('#customTagInput');
+                const tag = input.value.trim().toLowerCase();
+                if (!tag) return;
+
+                // Check if it's a frontend tag
+                for (const [cat, tags] of Object.entries(this.state.frontendTagOptions)) {
+                    if (tags.map(t => t.toLowerCase()).includes(tag)) {
+                        const actualTag = tags.find(t => t.toLowerCase() === tag);
+                        this.addFrontendTag(cat, actualTag);
+                        input.value = '';
+                    return;
+                    }
+                }
+
+                // Check if already added
+                if (this.state.tempCustomTags.includes(tag)) {
+                    this.showToast('Tag already added', true);
+                    input.value = '';
                     return;
                 }
 
-                const allTags = Array.from(this.state.allKnownTags);
-                const matches = allTags.filter(t => t.toLowerCase().includes(q));
-
-                if (matches.length === 0) {
-                    suggestions.style.display = 'none';
-                    return;
-                }
-
-                suggestions.innerHTML = matches.map(tag => `
-                    <div class="preset-tag" onclick="app.addTagFromDropdown('${tag}', this)">${tag}</div>
-                `).join('');
-                suggestions.style.display = 'flex';
+                // Add as custom - save to backend immediately
+                this.state.tempCustomTags.push(tag);
+                // Save to backend custom tags list immediately
+                await this.saveCustomTag(tag);
+                // Update the custom tags display
+                this.renderCustomTagsDisplay(container);
+                // Re-render the add tag buttons to show new custom tag in dropdown
+                this.renderAddTagButtons(container);
+                
+                input.value = '';
+                this.showToast('Custom tag added & saved to backend');
             },
 
             toggleAddDropdown(key, btn) {
@@ -1422,140 +1159,121 @@
                 if (!wasOpen) dropdown.classList.add('show');
             },
 
-            addTagFromDropdown(tag, el) {
-                // Determine category
-                let category = 'user';
-                for (const [cat, tags] of Object.entries(this.state.tagCategories)) {
-                    if (tags.includes(tag)) {
-                        if (cat.startsWith('visual')) category = 'visual';
-                        else if (cat.startsWith('context')) category = 'contextual';
-                        break;
+            searchAddTags(query, container) {
+                const q = query.toLowerCase().trim();
+                const suggestions = container.querySelector('#addTagSuggestions');
+
+                if (!q) { suggestions.style.display = 'none'; return; }
+
+                const allTags = [...this.state.allFrontendTags, ...this.state.customTags];
+                const matches = allTags.filter(t => t.toLowerCase().includes(q));
+
+                if (matches.length === 0) { suggestions.style.display = 'none'; return; }
+
+                suggestions.innerHTML = matches.map(tag => {
+                    // Find category
+                    let cat = 'custom';
+                    for (const [c, tags] of Object.entries(this.state.frontendTagOptions)) {
+                        if (tags.includes(tag)) { cat = c; break; }
                     }
-                }
-
-                if (!this.state.tempTags[category].includes(tag)) {
-                    this.state.tempTags[category].push(tag);
-                    const container = el.closest('.controls-section');
-                    this.renderTagList(container, category, category === 'visual' ? 'visual-tags-container' : category === 'contextual' ? 'context-tags-container' : 'user-tags-container');
-                }
-
-                // Close dropdowns
-                document.querySelectorAll('.category-dropdown').forEach(el => el.classList.remove('show'));
-
-                // Clear search if used
-                const searchInput = el.closest('.controls-section').querySelector('#addTagSearchInput');
-                if (searchInput) {
-                    searchInput.value = '';
-                    el.closest('.controls-section').querySelector('#addTagSuggestions').style.display = 'none';
-                }
+                    return `<div class="preset-tag" onclick="app.addTagFromSearch('${cat}', '${tag}')">${tag}</div>`;
+                }).join('');
+                suggestions.style.display = 'flex';
             },
 
-            // ================= ACTIONS =================
-
-            removeTag(type, tag, el) {
-                this.state.tempTags[type] = this.state.tempTags[type].filter(t => t !== tag);
-                const container = el.closest('.controls-section');
-                const className = type === 'visual' ? 'visual-tags-container' : type === 'contextual' ? 'context-tags-container' : 'user-tags-container';
-                this.renderTagList(container, type, className);
-                
-                // Update stats whenever a tag is added/removed
-                const context = this.state.isModalOpen ? 'modal' : 'pending';
-                this.updateTagStats(container, context);
+            addTagFromSearch(cat, tag) {
+                const container = this.state.isModalOpen ? document.getElementById('modalControls') : document.getElementById('pendingControls');
+                if (cat === 'custom') {
+                    if (!this.state.tempCustomTags.includes(tag)) {
+                        this.state.tempCustomTags.push(tag);
+                        this.renderCustomTagsDisplay(container);
+                    }
+                } else {
+                    this.addFrontendTag(cat, tag);
+                }
+                container.querySelector('#addTagSearch').value = '';
+                container.querySelector('#addTagSuggestions').style.display = 'none';
             },
 
-            handleAddTag(input, container) {
-                let tag = input.value.trim().toLowerCase();
-                if (!tag) return;
+            // ================= SAVE / APPROVE =================
 
-                // Check if tag is already present in ANY category
-                const lowerTag = tag.toLowerCase();
-                const existsInVisual = this.state.tempTags.visual.some(t => t.toLowerCase() === lowerTag);
-                const existsInContext = this.state.tempTags.contextual.some(t => t.toLowerCase() === lowerTag);
-                const existsInUser = this.state.tempTags.user.some(t => t.toLowerCase() === lowerTag);
-
-                if (existsInVisual || existsInContext || existsInUser) {
-                    this.showToast(`Tag "${tag}" already exists`, true);
-                    input.value = '';
+            async saveTags(memeId) {
+                if (!memeId || !this.state.currentMeme) {
+                    console.error('No meme to save');
                     return;
                 }
 
-                // Determine category by checking predefined tags (from /tags/options)
-                let category = 'user'; // Default to custom/user
-                let canonicalTag = tag; // Store the properly-cased version
+                // Frontend tags (predefined) - used by rec engine for tag affinity
+                const frontendTags = Object.values(this.state.tempFrontendTags).flat();
 
-                // Check if this tag is in the predefined ML tags
-                for (const predefinedTag of this.state.predefinedTags) {
-                    if (predefinedTag.toLowerCase() === lowerTag) {
-                        // Found it! Use the canonical casing
-                        canonicalTag = predefinedTag;
-                        
-                        // Now determine which category it belongs to
-                        for (const [cat, tags] of Object.entries(this.state.tagCategories)) {
-                            if (cat === 'custom') continue; // Skip custom category
-                            
-                            if (tags.some(t => t.toLowerCase() === lowerTag)) {
-                                if (cat.startsWith('visual')) {
-                                    category = 'visual';
-                                } else if (cat.startsWith('context')) {
-                                    category = 'contextual';
-                                }
-                                break;
-                            }
-                        }
-                        break;
-                    }
-                }
+                // Custom tags - descriptive tags (like Gemini tags)
+                const customTags = this.state.tempCustomTags || [];
 
-                // If still 'user', check if it was originally in the meme's tags
-                if (category === 'user' && this.state.currentMeme) {
-                    if (this.state.currentMeme.visual_tags && this.state.currentMeme.visual_tags.some(t => t.toLowerCase() === lowerTag)) {
-                        category = 'visual';
-                        // Use the meme's casing
-                        canonicalTag = this.state.currentMeme.visual_tags.find(t => t.toLowerCase() === lowerTag);
-                    } else if (this.state.currentMeme.contextual_tags && this.state.currentMeme.contextual_tags.some(t => t.toLowerCase() === lowerTag)) {
-                        category = 'contextual';
-                        // Use the meme's casing
-                        canonicalTag = this.state.currentMeme.contextual_tags.find(t => t.toLowerCase() === lowerTag);
-                    }
-                }
+                console.log('💾 Saving tags for meme:', memeId);
+                console.log('   Frontend tags:', frontendTags);
+                console.log('   Custom tags:', customTags);
+                console.log('   Visual/Gemini tags:', this.state.tempGeminiTags);
 
-                // Add to determined category
-                this.state.tempTags[category].push(canonicalTag);
-                this.renderTagList(container, category, category === 'visual' ? 'visual-tags-container' : category === 'contextual' ? 'context-tags-container' : 'user-tags-container');
-                input.value = '';
-                
-                // Update stats
-                const context = this.state.isModalOpen ? 'modal' : 'pending';
-                this.updateTagStats(container, context);
-            },
-
-
-
-            async saveTags(memeId) {
-                await fetch(`${API_BASE}/memes/${memeId}/tags`, {
+                // Save tags to backend
+                const tagsRes = await fetch(`${API_BASE}/memes/${memeId}/tags`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        visual_tags: this.state.tempTags.visual,
-                        contextual_tags: this.state.tempTags.contextual,
-                        user_tags: this.state.tempTags.user
+                        visual_tags: this.state.tempGeminiTags || [],
+                        contextual_tags: [],
+                        user_tags: customTags,        // Custom tags (descriptive)
+                        frontend_tags: frontendTags   // For rec engine affinity
                     })
                 });
+                
+                if (!tagsRes.ok) {
+                    const err = await tagsRes.json();
+                    throw new Error('Failed to save tags: ' + (err.detail || 'Unknown error'));
+                }
+                console.log('   ✅ Tags saved');
+
+                // Save use_case and meme_type (ALWAYS send these to ensure they're saved)
+                const updates = {
+                    use_case: this.state.tempUseCase,
+                    meme_type: this.state.tempMemeType
+                };
+                
+                console.log('   Saving use_case and meme_type:', updates);
+                
+                const fieldsRes = await fetch(`${API_BASE}/memes/${memeId}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updates)
+                });
+                
+                if (!fieldsRes.ok) {
+                    const err = await fieldsRes.json();
+                    throw new Error('Failed to save fields: ' + (err.detail || 'Unknown error'));
+                }
+                console.log('   ✅ Use case and meme_type saved');
             },
 
             async approveCurrent() {
                 try {
-                    // Save any new custom tags permanently now that we are approving
-                    this.state.tempTags.user.forEach(tag => this.saveCustomTag(tag));
-
-                    await this.saveTags(this.state.currentMeme.id);
-                    const res = await fetch(`${API_BASE}/memes/${this.state.currentMeme.id}/approve`, { method: 'POST' });
+                    if (!this.state.currentMeme || !this.state.currentMeme.id) {
+                        this.showToast('No meme selected', true);
+                        return;
+                    }
+                    const memeId = this.state.currentMeme.id;
+                    
+                    // Save all custom tags to backend first
+                    for (const tag of (this.state.tempCustomTags || [])) {
+                        await this.saveCustomTag(tag);
+                    }
+                    // Save tags to meme
+                    await this.saveTags(memeId);
+                    // Approve the meme
+                    const res = await fetch(`${API_BASE}/memes/${memeId}/approve`, { method: 'POST' });
                     if (res.ok) {
                         this.showToast('Meme Approved! 🎉');
                         this.nextPending();
                     } else {
-                        const err = await res.json();
-                        throw new Error(err.detail || 'Approval failed');
+                        throw new Error((await res.json()).detail || 'Approval failed');
                     }
                 } catch (err) {
                     console.error(err);
@@ -1564,39 +1282,21 @@
             },
 
             async rejectCurrent() {
-                console.log('🔴 REJECT BUTTON CLICKED!');
-                console.log('Current meme:', this.state.currentMeme);
-                
-                if (!this.state.currentMeme) {
-                    alert('Error: No meme selected!');
+                try {
+                    if (!this.state.currentMeme || !this.state.currentMeme.id) {
+                        this.showToast('No meme selected', true);
                     return;
                 }
-                
-                // NO CONFIRMATION - just reject immediately
-                try {
                     const memeId = this.state.currentMeme.id;
-                    console.log('Rejecting meme ID:', memeId);
                     
-                    const url = `${API_BASE}/memes/${memeId}/reject`;
-                    console.log('Calling URL:', url);
-                    
-                    const response = await fetch(url, { method: 'POST' });
-                    console.log('Response status:', response.status);
-                    
-                    if (!response.ok) {
-                        const error = await response.json();
-                        console.error('Server error:', error);
-                        throw new Error(error.detail || 'Reject failed');
-                    }
-                    
-                    const result = await response.json();
-                    console.log('Success:', result);
-                    
+                    const res = await fetch(`${API_BASE}/memes/${memeId}/reject`, { method: 'POST' });
+                    if (res.ok) {
                     this.showToast('Meme Rejected');
                     this.nextPending();
+                    } else {
+                        throw new Error((await res.json()).detail || 'Reject failed');
+                    }
                 } catch (err) { 
-                    console.error('❌ Reject error:', err);
-                    alert('Error: ' + err.message);
                     this.showToast('Error: ' + err.message, true); 
                 }
             },
@@ -1621,11 +1321,35 @@
                 }
             },
 
+            // ================= MODAL =================
+
+            openModal(memeId) {
+                const meme = this.state.approvedMemes.find(m => m.id === memeId);
+                if (!meme) return;
+
+                this.state.currentMeme = meme;
+                this.state.isModalOpen = true;
+                this.initTempData(meme);
+
+                document.getElementById('modalMemeImage').src = meme.firebase_image_url || meme.image_url;
+                document.getElementById('editModal').classList.add('active');
+
+                this.renderControls(document.getElementById('modalControls'), 'modal');
+            },
+
+            closeModal() {
+                document.getElementById('editModal').classList.remove('active');
+                this.state.isModalOpen = false;
+                this.state.currentMeme = null;
+            },
+
             async saveModalChanges() {
                 try {
-                    // Save any new custom tags permanently
-                    this.state.tempTags.user.forEach(tag => this.saveCustomTag(tag));
-
+                    // Save all custom tags to backend first
+                    for (const tag of this.state.tempCustomTags) {
+                        await this.saveCustomTag(tag);
+                    }
+                    // Save tags to meme
                     await this.saveTags(this.state.currentMeme.id);
                     this.showToast('Changes Saved! 💾');
                     this.closeModal();
@@ -1634,34 +1358,186 @@
             },
 
             async deleteCurrent() {
-                // NO CONFIRMATION - just delete immediately
                 try {
-                    console.log('Deleting meme:', this.state.currentMeme.id);
-                    const response = await fetch(`${API_BASE}/memes/${this.state.currentMeme.id}`, { method: 'DELETE' });
-                    if (!response.ok) {
-                        const error = await response.json();
-                        throw new Error(error.detail || 'Delete failed');
-                    }
+                    await fetch(`${API_BASE}/memes/${this.state.currentMeme.id}`, { method: 'DELETE' });
                     this.showToast('Meme Deleted 🗑️');
                     this.closeModal();
                     this.loadMemes();
-                } catch (err) { 
-                    console.error('Delete error:', err);
-                    this.showToast('Error: ' + err.message, true); 
+                } catch (err) { this.showToast('Error: ' + err.message, true); }
+            },
+
+            // ================= APPROVED VIEW FILTERING =================
+
+            renderCategoryButtons() {
+                const container = document.getElementById('categoryFilters');
+                if (!container) return;
+
+                let html = '';
+                for (const [cat, config] of Object.entries(FRONTEND_CATEGORIES)) {
+                    const tags = Array.isArray(this.state.frontendTagOptions[cat]) ? this.state.frontendTagOptions[cat] : [];
+                    if (tags.length === 0) continue;
+
+                    html += `
+                        <div class="category-btn-wrapper">
+                            <button class="category-btn ${config.btnClass}" onclick="app.toggleFilterDropdown('${cat}')">
+                                ${config.label}
+                            </button>
+                            <div id="filter-dropdown-${cat}" class="category-dropdown">
+                                ${[...tags].sort().map(tag => `
+                                    <div class="dropdown-item" onclick="app.addFilter('${tag}')">${tag}</div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
                 }
+                container.innerHTML = html;
+            },
+
+            toggleFilterDropdown(key) {
+                const dropdown = document.getElementById(`filter-dropdown-${key}`);
+                const wasOpen = dropdown.classList.contains('show');
+                document.querySelectorAll('.category-dropdown').forEach(el => el.classList.remove('show'));
+                if (!wasOpen) dropdown.classList.add('show');
+            },
+
+            searchFilterTags(query) {
+                const q = query.toLowerCase().trim();
+                const container = document.getElementById('suggestedTags');
+
+                if (!q) { container.style.display = 'none'; return; }
+
+                const matches = [...this.state.allFrontendTags].filter(t => t.toLowerCase().includes(q));
+
+                if (matches.length === 0) {
+                    container.innerHTML = '<span style="color:var(--text-secondary); font-size:12px;">No matching tags</span>';
+                    container.style.display = 'flex';
+                    return;
+                }
+
+                container.innerHTML = matches.map(tag => `
+                    <div class="preset-tag" onclick="app.addFilter('${tag}')">${tag}</div>
+                `).join('');
+                container.style.display = 'flex';
+            },
+
+            addFilter(tag) {
+                if (!this.state.activeFilters.includes(tag)) {
+                    this.state.activeFilters.push(tag);
+                    this.renderActiveFilters();
+                    this.applyFilters();
+                }
+                document.querySelectorAll('.category-dropdown').forEach(el => el.classList.remove('show'));
+                document.getElementById('tagSearchInput').value = '';
+                document.getElementById('suggestedTags').style.display = 'none';
+            },
+
+            removeFilter(tag) {
+                this.state.activeFilters = this.state.activeFilters.filter(t => t !== tag);
+                this.renderActiveFilters();
+                this.applyFilters();
+            },
+
+            renderActiveFilters() {
+                const container = document.getElementById('activeFilters');
+                container.innerHTML = this.state.activeFilters.map(tag => `
+                    <div class="filter-tag">
+                        ${tag}
+                        <span style="cursor:pointer;font-weight:bold" onclick="app.removeFilter('${tag}')">×</span>
+                    </div>
+                `).join('');
+            },
+
+            applyFilters() {
+                let filtered = [...this.state.approvedMemes];
+
+                // Sort by approved_at date (most recent first)
+                filtered.sort((a, b) => {
+                    const dateA = a.approved_at ? new Date(a.approved_at) : new Date(0);
+                    const dateB = b.approved_at ? new Date(b.approved_at) : new Date(0);
+                    return dateB - dateA;
+                });
+
+                // Apply approved filter (last 1, 5, 10 or meme type)
+                const filter = this.state.approvedFilter;
+                if (filter === 'last1') {
+                    filtered = filtered.slice(0, 1);
+                } else if (filter === 'last5') {
+                    filtered = filtered.slice(0, 5);
+                } else if (filter === 'last10') {
+                    filtered = filtered.slice(0, 10);
+                } else if (filter === 'customizable') {
+                    filtered = filtered.filter(m => m.meme_type === 'customizable' || m.meme_type === 'both');
+                } else if (filter === 'rec_engine') {
+                    filtered = filtered.filter(m => m.meme_type === 'rec_engine' || m.meme_type === 'both' || !m.meme_type);
+                } else if (filter === 'both') {
+                    filtered = filtered.filter(m => m.meme_type === 'both');
+                }
+
+                // Apply tag filters
+                if (this.state.activeFilters.length > 0) {
+                    filtered = filtered.filter(meme => {
+                        const memeTags = [...(meme.visual_tags || []), ...(meme.contextual_tags || []), ...(meme.user_tags || [])];
+                        return this.state.activeFilters.every(filter => memeTags.includes(filter));
+                    });
+                }
+
+                this.renderApprovedGrid(filtered);
+            },
+
+            setApprovedFilter(filter) {
+                this.state.approvedFilter = filter;
+                // Update button states
+                document.querySelectorAll('.approved-filters .filter-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                    if (btn.onclick.toString().includes(`'${filter}'`)) {
+                        btn.classList.add('active');
+                    }
+                });
+                this.applyFilters();
+            },
+
+            renderApprovedGrid(memes) {
+                const grid = document.getElementById('approvedGrid');
+                if (memes.length === 0) {
+                    grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-secondary); padding: 40px;">No memes found</div>';
+                    return;
+                }
+
+                const getTypeBadge = (memeType) => {
+                    if (memeType === 'customizable') return '<span style="background:#30D158;color:white;padding:2px 6px;border-radius:4px;font-size:10px;">🎨</span>';
+                    if (memeType === 'both') return '<span style="background:#5E5CE6;color:white;padding:2px 6px;border-radius:4px;font-size:10px;">⚡</span>';
+                    return '<span style="background:#FF9F0A;color:white;padding:2px 6px;border-radius:4px;font-size:10px;">🚀</span>';
+                };
+
+                grid.innerHTML = memes.map(meme => `
+                    <div class="meme-card" onclick="app.openModal('${meme.id}')">
+                        <img class="card-img" src="${meme.firebase_image_url || meme.image_url}" loading="lazy">
+                        <div class="card-body">
+                            <div class="card-meta">
+                                <span>${getTypeBadge(meme.meme_type || 'rec_engine')}</span>
+                                <span>👁️ ${meme.total_views || 0}</span>
+                            </div>
+                            <div class="card-tags">
+                                ${(meme.frontend_tags || meme.user_tags || []).slice(0, 3).map(t => `<span class="mini-tag">${t}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
             },
 
             // ================= TAGS VIEW =================
 
             renderTagsView() {
                 const container = document.getElementById('customTagsList');
-                if (this.state.customTags.length === 0) {
+                const customTags = Array.isArray(this.state.customTags) ? this.state.customTags : [];
+                
+                if (customTags.length === 0) {
                     container.innerHTML = '<p style="color:var(--text-secondary)">No custom tags yet.</p>';
                     return;
                 }
 
-                container.innerHTML = this.state.customTags.sort().map(tag => `
-                    <div class="tag tag-user" style="font-size:14px; padding:8px 12px;">
+                container.innerHTML = [...customTags].sort().map(tag => `
+                    <div class="tag tag-custom" style="font-size:14px; padding:8px 12px;">
                         ${tag}
                         <span class="tag-remove" onclick="app.deleteCustomTag('${tag}')" style="margin-left:8px; font-size:16px;">×</span>
                     </div>
@@ -1669,60 +1545,27 @@
             },
 
             async deleteCustomTag(tag) {
-                const removeFromMemes = confirm(`Delete custom tag "${tag}"?\n\nClick OK to also remove this tag from ALL memes.\nClick Cancel to just remove from the tag list.`);
-                
                 try {
-                    // Delete from Firestore and optionally from all memes
-                    const res = await fetch(`${API_BASE}/tags/custom/${encodeURIComponent(tag)}?remove_from_memes=${removeFromMemes}`, {
-                        method: 'DELETE'
-                    });
-                    const data = await res.json();
-                    
-                    // Update local state
+                    await fetch(`${API_BASE}/tags/custom/${encodeURIComponent(tag)}`, { method: 'DELETE' });
                     this.state.customTags = this.state.customTags.filter(t => t !== tag);
-                    localStorage.setItem('customTags', JSON.stringify(this.state.customTags));
-                    this.state.allKnownTags.delete(tag);
-                    
-                    // Refresh memes if tags were removed
-                    if (removeFromMemes && data.memes_updated > 0) {
-                        await this.loadMemes();
-                        this.showToast(`Tag deleted & removed from ${data.memes_updated} memes`);
-                    } else {
-                        this.showToast('Tag deleted');
-                    }
-                    
                     this.renderTagsView();
-                } catch (err) {
-                    this.showToast('Error deleting tag: ' + err.message, true);
-                }
+                    this.showToast('Tag deleted');
+                } catch (err) { this.showToast('Error: ' + err.message, true); }
             },
 
             async clearAllCustomTags() {
-                const removeFromMemes = confirm('Delete ALL custom tags?\n\nClick OK to also remove these tags from ALL memes.\nClick Cancel to just clear the tag list.');
-                
+                if (!confirm('Delete ALL custom tags?')) return;
                 try {
-                    // Delete each tag from Firestore
-                    for (const tag of this.state.customTags) {
-                        await fetch(`${API_BASE}/tags/custom/${encodeURIComponent(tag)}?remove_from_memes=${removeFromMemes}`, {
-                            method: 'DELETE'
-                        });
-                    }
-                    
-                    // Clear local state
-                    this.state.customTags.forEach(tag => this.state.allKnownTags.delete(tag));
+                    // Clear all at once by posting empty array
+                    await fetch(`${API_BASE}/tags/custom`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify([])
+                    });
                     this.state.customTags = [];
-                    localStorage.removeItem('customTags');
-                    
-                    // Refresh memes if tags were removed
-                    if (removeFromMemes) {
-                        await this.loadMemes();
-                    }
-                    
                     this.renderTagsView();
                     this.showToast('All custom tags deleted');
-                } catch (err) {
-                    this.showToast('Error clearing tags: ' + err.message, true);
-                }
+                } catch (err) { this.showToast('Error: ' + err.message, true); }
             },
 
             showToast(msg, isError = false) {
@@ -1735,8 +1578,6 @@
         };
 
         window.addEventListener('DOMContentLoaded', () => app.init());
-
     </script>
 </body>
-
 </html>

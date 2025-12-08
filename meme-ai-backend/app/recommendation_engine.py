@@ -6,16 +6,105 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 import numpy as np
 import random
-from datetime import datetime, timedelta
-from app.ml_model import extract_context_tags  # For fallback tag matching
+from datetime import datetime, timedelta, timezone
 from app.db import db, get_user, update_user, get_meme, Meme, User
-from app.context_analyzer import (
+
+
+def _safe_datetime_diff_days(dt1: datetime, dt2: datetime) -> int:
+    """Safely compute difference in days between two datetimes, handling timezone-aware/naive mismatch."""
+    # Convert both to naive UTC if needed
+    if dt1.tzinfo is not None:
+        dt1 = dt1.replace(tzinfo=None)
+    if dt2.tzinfo is not None:
+        dt2 = dt2.replace(tzinfo=None)
+    return (dt1 - dt2).days
+
+
+def _now_naive() -> datetime:
+    """Get current time as naive datetime (for consistent comparisons)."""
+    return datetime.utcnow()
+from app.transformer import (
     get_context_embedding,
     cosine_similarity,
     find_personal_patterns,
     find_global_patterns
 )
+from app.meme_analyzer import rank_memes_with_gemini
 from collections import Counter
+
+
+# ============================================================================
+# TAG SYNONYMS - Map user words to meme tags
+# ============================================================================
+TAG_SYNONYMS = {
+    # Emotions - sad/negative
+    'sad': ['disappointed', 'tired', 'frustrated', 'upset', 'depressed', 'melancholy'],
+    'depressed': ['disappointed', 'tired', 'frustrated', 'sad'],
+    'upset': ['disappointed', 'frustrated', 'angry', 'annoyed'],
+    'angry': ['frustrated', 'annoyed', 'irritated'],
+    'annoyed': ['frustrated', 'irritated', 'tired'],
+    'tired': ['exhausted', 'frustrated', 'disappointed'],
+    'stressed': ['frustrated', 'tired', 'anxious', 'overwhelmed'],
+    'anxious': ['nervous', 'worried', 'stressed'],
+    'worried': ['anxious', 'nervous', 'concerned'],
+    
+    # Emotions - happy/positive
+    'happy': ['satisfied', 'joyful', 'excited', 'cheerful', 'success'],
+    'excited': ['happy', 'hyped', 'enthusiastic'],
+    'proud': ['satisfied', 'success', 'winning', 'smug'],
+    'relieved': ['satisfied', 'relaxed', 'calm'],
+    
+    # Emotions - neutral/mixed
+    'confused': ['shocked', 'surprised', 'bewildered'],
+    'surprised': ['shocked', 'confused', 'unexpected'],
+    'awkward': ['nervous', 'uncomfortable', 'cringe'],
+    'cringe': ['awkward', 'uncomfortable', 'embarrassed'],
+    'bored': ['tired', 'unimpressed', 'deadpan'],
+    
+    # Situations
+    'work': ['office', 'job', 'professional', 'corporate'],
+    'school': ['student', 'class', 'homework', 'study'],
+    'relationship': ['dating', 'love', 'romance', 'friendship'],
+    'monday': ['work', 'tired', 'frustrated'],
+    'friday': ['weekend', 'happy', 'celebration'],
+    'weekend': ['relaxed', 'happy', 'celebration'],
+    
+    # Actions
+    'waiting': ['patience', 'bored', 'anticipation'],
+    'winning': ['success', 'victory', 'celebration', 'happy'],
+    'losing': ['disappointed', 'failure', 'sad'],
+    'failing': ['disappointed', 'failure', 'sad', 'frustrated'],
+}
+
+# ============================================================================
+# SIMPLE CONTEXT TAG EXTRACTION (Fallback for tag matching)
+# ============================================================================
+def _extract_simple_context_tags(context: str) -> List[str]:
+    """
+    Simple keyword extraction from context for tag matching fallback.
+    Expands user words using synonyms to match meme tags better.
+    """
+    keywords = context.lower().split()
+    
+    # Filter out common words
+    stop_words = {
+        'i', 'me', 'my', 'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 
+        'to', 'for', 'of', 'with', 'by', 'from', 'about', 'as', 'is', 'was', 'are', 
+        'been', 'be', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 
+        'could', 'should', 'this', 'that', 'when', 'where', 'why', 'how', 'what', 
+        'which', 'who', 'whom', 'just', 'like', 'so', 'very', 'really', 'get', 'got',
+        'meme', 'memes', 'want', 'need', 'something', 'looking'
+    }
+    
+    base_tags = [word.strip('.,!?;:') for word in keywords if word not in stop_words and len(word) > 2]
+    
+    # Expand tags using synonyms
+    expanded_tags = set(base_tags)
+    for tag in base_tags:
+        if tag in TAG_SYNONYMS:
+            expanded_tags.update(TAG_SYNONYMS[tag])
+    
+    return list(expanded_tags)[:15]  # Allow more tags after expansion
 from google.cloud import firestore  # For Query.DESCENDING
 
 #====================== Session Storage ======================
@@ -190,7 +279,7 @@ def calculate_freshness_multiplier(meme: Dict) -> float:
         return 1.0
     
     #get age in days
-    age_days = (datetime.now() - created_at).days
+    age_days = _safe_datetime_diff_days(_now_naive(), created_at)
     if age_days < 7:
         return 1.25
     elif age_days < 30:
@@ -224,7 +313,7 @@ def calculate_recency_penalty(meme: Dict, user: Dict) -> float:
             sent_time = memes.get("shown_at")
 
             if isinstance(sent_time, datetime):
-                days_since = (datetime.now() - sent_time).days
+                days_since = _safe_datetime_diff_days(_now_naive(), sent_time)
             else:
                 continue
 
@@ -406,6 +495,10 @@ def find_similar_memes(
         
         # Skip excluded memes
         if meme_data['id'] in exclude_ids:
+            continue
+        
+        # Skip memes that are ONLY for customization (not for rec engine/browsing)
+        if meme_data.get('meme_type') == 'customizable':
             continue
         
         # Calculate two-tier similarity
@@ -591,11 +684,14 @@ def get_popular_fallback_memes(
         .stream()
     )
     
-    # Convert to list of dicts
+    # Convert to list of dicts (excluding customizable-only memes)
     popular_memes = []
     for doc in memes_ref:
         meme_data = doc.to_dict()
         meme_data['id'] = doc.id
+        # Skip memes that are ONLY for customization
+        if meme_data.get('meme_type') == 'customizable':
+            continue
         popular_memes.append(meme_data)
     
     # Score using reusable function
@@ -657,7 +753,7 @@ def get_exploration_meme(
         exclude_ids = exclude_ids + user_shown_ids
     
     # Calculate cutoff date (7 days ago)
-    seven_days_ago = datetime.now() - timedelta(days=7)
+    seven_days_ago = _now_naive() - timedelta(days=7)
     
     # Query 100 newest memes (< 7 days old) ← CHANGED: Get 100 instead of 10
     memes_ref = (
@@ -669,11 +765,14 @@ def get_exploration_meme(
         .stream()
     )
     
-    # Convert to list
+    # Convert to list (excluding customizable-only memes)
     new_memes_pool = []  # ← CHANGED: Renamed to indicate it's a pool
     for doc in memes_ref:
         meme_data = doc.to_dict()
         meme_data['id'] = doc.id
+        # Skip memes that are ONLY for customization
+        if meme_data.get('meme_type') == 'customizable':
+            continue
         new_memes_pool.append(meme_data)
     
     # If no new memes found at all, return None
@@ -777,27 +876,33 @@ def apply_diversity_filter(
 def get_semantic_search_candidates(
     context_embedding: List[float],
     exclude_ids: List[str],
-    limit: int = 30
+    limit: int = 30,
+    context_tags: List[str] = None  # NEW: Add tag matching
 ) -> List[Dict]:
     """
-    ZERO-SHOT RETRIEVAL: Direct text-to-image matching
+    ZERO-SHOT RETRIEVAL: Hybrid text matching + tag matching
     
-    Finds memes that visually/conceptually match the text description directly.
-    Crucial for unique, new user queries that have no historical patterns.
+    Finds memes that match both semantically AND by tag overlap.
+    Uses tag matching as a strong signal when CLIP similarities are close.
     
     How it works:
     1. Get ALL approved memes from database
-    2. Compare context embedding directly to each meme's CLIP image embedding
-    3. Return top matches (no tags, no history - pure semantic similarity)
+    2. Calculate CLIP similarity (text-to-text embedding)
+    3. Calculate tag overlap score (using synonym-expanded tags)
+    4. Combine: 50% CLIP + 50% tag match (tag match is now equally important!)
     
     Args:
         context_embedding: CLIP embedding of user's text context
         exclude_ids: Meme IDs to skip (already shown)
         limit: How many candidates to return (default 30)
+        context_tags: Expanded tags from user context (e.g., ["sad", "disappointed", "tired"])
     
     Returns:
-        List of candidate dicts with semantic similarity scores
+        List of candidate dicts with hybrid similarity scores
     """
+    context_tags = context_tags or []
+    context_tag_set = set(tag.lower() for tag in context_tags)
+    
     # Get ALL approved memes (fast for <10k memes, use vector DB for larger scale)
     memes_ref = db.collection('memes').where('status', '==', 'approved').stream()
     
@@ -811,29 +916,59 @@ def get_semantic_search_candidates(
         if meme['id'] in exclude_ids:
             continue
         
-        # Skip memes without embeddings
-        if not meme.get('clip_embedding'):
+        # Skip memes that are ONLY for customization
+        if meme.get('meme_type') == 'customizable':
             continue
         
-        # Direct cosine similarity (text embedding vs image embedding)
-        # This relies purely on CLIP's ability to match text descriptions to images
-        similarity = cosine_similarity(
+        # Prefer use_case_embedding (text-to-text), fallback to clip_embedding (text-to-image)
+        meme_embedding = meme.get('use_case_embedding') or meme.get('clip_embedding', [])
+        if not meme_embedding:
+            continue
+        
+        # === CLIP SIMILARITY ===
+        # Text-to-text comparison (compares user's context to meme's use_case)
+        clip_similarity = cosine_similarity(
             context_embedding,
-            meme.get('clip_embedding', [])
+            meme_embedding
         )
         
-        # Threshold: Keep lower for semantic search (0.23-0.30)
-        # CLIP text-to-image similarities are typically lower than image-to-image
-        if similarity > 0.23:
-            # Apply quality multiplier (still favor high-quality memes)
-            quality_mult = calculate_quality_multiplier(meme)
+        # === TAG MATCHING (NEW!) ===
+        # Get all meme tags and check overlap with context tags
+        meme_tags = set()
+        for tag_field in ['frontend_tags', 'visual_tags', 'contextual_tags', 'all_tags']:
+            meme_tags.update(tag.lower() for tag in meme.get(tag_field, []))
+        
+        # Calculate tag overlap score
+        tag_intersection = context_tag_set & meme_tags
+        tag_score = len(tag_intersection) / max(len(context_tag_set), 1)  # 0.0 to 1.0
+        
+        # === HYBRID SCORE ===
+        # When CLIP scores are all ~0.93, tag matching becomes the differentiator
+        # Weight: 50% CLIP (normalized) + 50% tag match
+        # Normalize CLIP to 0-1 range (typical range is 0.85-0.95, so shift and scale)
+        clip_normalized = max(0, min(1, (clip_similarity - 0.80) / 0.20))  # 0.80-1.00 → 0-1
+        
+        # Hybrid score: equal weight to semantic and tag matching
+        similarity = (clip_normalized * 0.5) + (tag_score * 0.5)
+        
+        # Threshold: Higher for text-to-text (0.85+), lower for text-to-image fallback (0.23)
+        # Text embeddings have MUCH higher similarity scores (0.85-0.95 range)
+        has_use_case_embedding = bool(meme.get('use_case_embedding'))
+        threshold = 0.85 if has_use_case_embedding else 0.23
+        
+        if similarity > threshold:
+            # For semantic search, SIMILARITY is king (80% weight)
+            # Quality and freshness only add minor adjustments (20% combined)
+            quality_mult = calculate_scoring_multipliers(meme)
             
             # Calculate freshness boost (favor newer memes slightly)
-            days_old = (datetime.now() - meme.get('created_at', datetime.now())).days
-            freshness_boost = max(0.8, 1.0 - (days_old / 365) * 0.2)  # Gentle decay over a year
+            created_at = meme.get('created_at', _now_naive())
+            days_old = _safe_datetime_diff_days(_now_naive(), created_at)
+            freshness_boost = max(0.9, 1.0 - (days_old / 365) * 0.1)  # Very gentle decay
             
-            # Final score = semantic similarity * quality * freshness
-            final_score = similarity * quality_mult * freshness_boost
+            # Final score: similarity dominates (80%), quality/freshness minor (20%)
+            # This ensures best semantic matches rank highest
+            final_score = (similarity * 0.8) + (quality_mult * freshness_boost * 0.2)
             
             candidates.append({
                 'meme': meme,
@@ -849,31 +984,253 @@ def get_semantic_search_candidates(
     
     return candidates[:limit]
 
+#====================== TAG AFFINITY SYSTEM ======================
+# Learns user preferences from interactions with meme tags
+
+# Interaction weights for tag affinity updates
+TAG_AFFINITY_WEIGHTS = {
+    "send": 1.0,        # Strongest signal - user chose to share
+    "favorite": 0.7,    # Strong signal - user wants to save
+    "thumbs_up": 0.3,   # Positive signal
+    "thumbs_down": -0.2 # Negative signal (lighter penalty)
+}
+
+# Decay settings
+TAG_DECAY_WINDOW_DAYS = 180  # 6 months
+TAG_DECAY_FLOOR = 0.2       # Never lose more than 80% of affinity
+
+
+def update_tag_affinity(user_id: str, meme_id: str, action: str) -> bool:
+    """
+    Update user's tag affinities based on their interaction with a meme.
+    Only tracks frontend_tags (the 62 user-facing tags).
+    
+    Args:
+        user_id: User's ID
+        meme_id: Meme they interacted with
+        action: "send", "favorite", "thumbs_up", or "thumbs_down"
+    
+    Returns:
+        True if updated successfully
+    """
+    from app.meme_analyzer import get_all_frontend_tags as get_all_frontend_tag_keys
+    
+    # Get weight for this action
+    weight = TAG_AFFINITY_WEIGHTS.get(action, 0)
+    if weight == 0:
+        return False
+    
+    # Get user and meme
+    user = get_user(user_id)
+    meme = get_meme(meme_id)
+    
+    if not user or not meme:
+        return False
+    
+    # Get meme's frontend_tags only
+    valid_frontend_tags = get_all_frontend_tag_keys()
+    meme_frontend_tags = [t for t in meme.get("frontend_tags", []) if t in valid_frontend_tags]
+    
+    if not meme_frontend_tags:
+        return False
+    
+    # Update affinities for each tag
+    now = datetime.now()
+    affinities = user.tag_affinities or {}
+    
+    for tag in meme_frontend_tags:
+        if tag not in affinities:
+            # Initialize new tag entry
+            affinities[tag] = {
+                "score": 0.0,
+                "positive_count": 0,
+                "negative_count": 0,
+                "first_interaction": now,
+                "last_interaction": now
+            }
+        
+        # Update the tag affinity
+        tag_data = affinities[tag]
+        tag_data["score"] = tag_data.get("score", 0) + weight
+        tag_data["last_interaction"] = now
+        
+        if weight > 0:
+            tag_data["positive_count"] = tag_data.get("positive_count", 0) + 1
+        else:
+            tag_data["negative_count"] = tag_data.get("negative_count", 0) + 1
+    
+    # Save updated affinities
+    user.tag_affinities = affinities
+    update_user(user)
+    
+    print(f"✅ Updated tag affinities for user {user_id}: {meme_frontend_tags} ({action}: {weight:+.1f})")
+    return True
+
+
+def apply_time_decay(tag_data: Dict) -> float:
+    """
+    Apply time decay to a tag affinity score.
+    
+    Decay formula (hybrid with floor):
+    - Full score if interacted within last 30 days
+    - Linear decay from 30-180 days
+    - Floor at 20% of score after 180 days
+    
+    Args:
+        tag_data: Dict with "score" and "last_interaction"
+    
+    Returns:
+        Decayed score
+    """
+    score = tag_data.get("score", 0)
+    last_interaction = tag_data.get("last_interaction")
+    
+    if not last_interaction or score <= 0:
+        return max(0, score)
+    
+    # Handle datetime conversion
+    if isinstance(last_interaction, str):
+        try:
+            last_interaction = datetime.fromisoformat(last_interaction)
+        except:
+            return score
+    
+    days_since = _safe_datetime_diff_days(_now_naive(), last_interaction)
+    
+    # No decay for recent interactions (< 30 days)
+    if days_since < 30:
+        return score
+    
+    # Linear decay from day 30 to day 180
+    if days_since < TAG_DECAY_WINDOW_DAYS:
+        # Decay from 1.0 to TAG_DECAY_FLOOR over 150 days (30-180)
+        decay_progress = (days_since - 30) / (TAG_DECAY_WINDOW_DAYS - 30)
+        decay_factor = 1.0 - (1.0 - TAG_DECAY_FLOOR) * decay_progress
+        return score * decay_factor
+    
+    # After 180 days, apply floor
+    return score * TAG_DECAY_FLOOR
+
+
+def calculate_tag_affinity_boost(user: User, meme: Dict) -> float:
+    """
+    Calculate the tag affinity boost multiplier for a meme.
+    
+    Uses logarithmic scaling with cap at ~1.5x:
+    - No affinity → 1.0x
+    - Some affinity → 1.0x - 1.25x
+    - Strong affinity → 1.25x - 1.5x
+    
+    Args:
+        user: User object with tag_affinities
+        meme: Meme dict with frontend_tags
+    
+    Returns:
+        Multiplier between 1.0 and ~1.5
+    """
+    import math
+    from app.meme_analyzer import get_all_frontend_tags as get_all_frontend_tag_keys
+    
+    affinities = user.tag_affinities or {}
+    
+    if not affinities:
+        return 1.0
+    
+    # Get meme's frontend_tags
+    valid_frontend_tags = get_all_frontend_tag_keys()
+    meme_tags = [t for t in meme.get("frontend_tags", []) if t in valid_frontend_tags]
+    
+    if not meme_tags:
+        return 1.0
+    
+    # Calculate total affinity score for this meme's tags
+    total_affinity = 0.0
+    matched_tags = 0
+    
+    for tag in meme_tags:
+        if tag in affinities:
+            tag_data = affinities[tag]
+            decayed_score = apply_time_decay(tag_data)
+            if decayed_score > 0:
+                total_affinity += decayed_score
+                matched_tags += 1
+    
+    if total_affinity <= 0:
+        return 1.0
+    
+    # Logarithmic scaling: boost = 1.0 + 0.5 * log10(1 + affinity) / log10(100)
+    # This gives:
+    #   affinity=1  → boost≈1.15
+    #   affinity=10 → boost≈1.25
+    #   affinity=50 → boost≈1.42
+    #   affinity=100+ → boost≈1.50 (cap)
+    
+    log_boost = 0.5 * math.log10(1 + total_affinity) / math.log10(100)
+    boost = 1.0 + min(log_boost, 0.5)  # Cap at 1.5x
+    
+    return boost
+
+
+def get_user_top_tags(user_id: str, limit: int = 10) -> List[Dict]:
+    """
+    Get user's top tag affinities (useful for debugging/analytics).
+    
+    Returns list of {"tag": str, "score": float, "decayed_score": float}
+    """
+    user = get_user(user_id)
+    if not user or not user.tag_affinities:
+        return []
+    
+    tag_scores = []
+    for tag, data in user.tag_affinities.items():
+        decayed = apply_time_decay(data)
+        tag_scores.append({
+            "tag": tag,
+            "raw_score": data.get("score", 0),
+            "decayed_score": decayed,
+            "positive_count": data.get("positive_count", 0),
+            "negative_count": data.get("negative_count", 0),
+            "last_interaction": data.get("last_interaction")
+        })
+    
+    # Sort by decayed score
+    tag_scores.sort(key=lambda x: x["decayed_score"], reverse=True)
+    return tag_scores[:limit]
+
+
 #====================== Thompson Sampling ======================
 
 def thompson_sampling_selection(
     candidates: List[Dict],
-    num_selections: int = 10
+    num_selections: int = 10,
+    user: User = None
 ) -> List[Dict]:
     """
-    Select memes using Thompson Sampling to balance proven winners and new memes
+    Select memes using Thompson Sampling to balance proven winners and new memes.
+    Now includes tag affinity boost for personalization!
     
     Process:
     1. Sample success rate from Beta(thumbs_up + 1, thumbs_down + 1)
     2. Multiply by context score
-    3. Return top N
+    3. Multiply by tag affinity boost (NEW!)
+    4. Return top N
+    
+    Formula:
+    combined_score = (context_similarity ^ 0.6) × (thompson_sample ^ 0.4) × tag_affinity_boost
     
     Why this works:
     - New memes: High uncertainty → sometimes rank high (exploration)
     - Proven memes: Low uncertainty → consistently rank high (exploitation)
     - Bad memes: Low sample → filtered out
+    - User's preferred tags: Boosted up to 1.5x (personalization!)
     
     Args:
         candidates: Scored candidate memes
         num_selections: How many to pick (default 10)
+        user: User object for tag affinity calculation (optional)
     
     Returns:
-        Top memes sorted by combined score (context × thompson sample)
+        Top memes sorted by combined score (context × thompson × tag_affinity)
     """
     #score results
     thompson_scores = []
@@ -895,13 +1252,30 @@ def thompson_sampling_selection(
         #basicly confidence in the each thompson score
         sampled_rate = np.random.beta(alpha, beta)
         
-        #combine with context similarity score(multiply them)(60/40 split)
-        combined_score = (candidate['final_score'] ** 0.6) * (sampled_rate ** 0.4)
+        # Calculate tag affinity boost (NEW!)
+        # Returns 1.0-1.5x based on user's preference for this meme's tags
+        if user:
+            tag_boost = calculate_tag_affinity_boost(user, meme)
+        else:
+            tag_boost = 1.0
+        
+        # Combine: context × thompson × tag_affinity
+        # For semantic search matches, almost NO Thompson randomness
+        is_semantic = candidate.get('is_semantic', False)
+        if is_semantic:
+            # Semantic matches: 98% similarity, 2% thompson (nearly deterministic)
+            # This ensures best semantic matches stay at top
+            base_score = (candidate['final_score'] * 0.98) + (sampled_rate * 0.02)
+        else:
+            # Pattern matches: 60% context, 40% thompson (more exploration)
+            base_score = (candidate['final_score'] ** 0.6) * (sampled_rate ** 0.4)
+        combined_score = base_score * tag_boost
         
         thompson_scores.append({
             'meme': meme,
             'original_score': candidate['final_score'],
             'thompson_sample': sampled_rate,
+            'tag_affinity_boost': tag_boost,
             'combined_score': combined_score,
             'tier': candidate.get('tier', 0),
             'similarity_score': candidate.get('similarity_score', 0),
@@ -967,13 +1341,19 @@ def get_curated_mix(
                 
             meme = get_meme(meme_id)
             if meme and meme.get('status') == 'approved':
+                # Skip memes that are ONLY for customization
+                if meme.get('meme_type') == 'customizable':
+                    continue
+                    
                 # Score by context match
                 meme_dict = meme if isinstance(meme, dict) else meme.to_dict()
                 meme_dict['id'] = meme_id
                 
+                # Prefer use_case_embedding (text-to-text) for better semantic matching
+                meme_embedding = meme_dict.get('use_case_embedding') or meme_dict.get('clip_embedding', [])
                 similarity = cosine_similarity(
                     context_embedding,
-                    meme_dict.get('clip_embedding', [])
+                    meme_embedding
                 )
                 
                 scored_favorites.append({
@@ -1008,10 +1388,15 @@ def get_curated_mix(
         if meme['id'] in [c['meme']['id'] for c in curated] or meme['id'] in exclude_ids:
             continue
         
-        # Score by context match
+        # Skip memes that are ONLY for customization
+        if meme.get('meme_type') == 'customizable':
+            continue
+        
+        # Score by context match - prefer use_case_embedding (text-to-text)
+        meme_embedding = meme.get('use_case_embedding') or meme.get('clip_embedding', [])
         similarity = cosine_similarity(
             context_embedding,
-            meme.get('clip_embedding', [])
+            meme_embedding
         )
         
         scored_global.append({
@@ -1071,9 +1456,10 @@ def get_recommendations(
         # Create new session
         session_id = f"{user_id}_{datetime.now().timestamp()}"
         
-        # Get context embedding and tags
+        # Get context embedding (Gemini analyzes → CLIP embeds)
         context_embedding = get_context_embedding(context)
-        context_tags = extract_context_tags(context)
+        # Tags extracted from context (simplified - Gemini handles understanding)
+        context_tags = _extract_simple_context_tags(context)
         
         session = RecommendationSession(
             session_id=session_id,
@@ -1096,7 +1482,7 @@ def get_recommendations(
     
     # Extract context data (use session's stored data)
     context_embedding = session.context_embedding
-    context_tags = extract_context_tags(context)
+    context_tags = _extract_simple_context_tags(context)
     
     # Step 2: Check exploration trigger (only on first request of new session)
     exploration_candidates = []
@@ -1169,33 +1555,41 @@ def get_recommendations(
             num_global=1
         )
     
-    # Step 4: Get candidates from patterns
+    # Step 4: Get candidates - SEMANTIC SEARCH FIRST (primary method)
     all_candidates = []
     
-    # 4a. Try personal patterns
+    # 4a. SEMANTIC SEARCH FIRST (hybrid: CLIP + tag matching)
+    # This ensures semantic matches get priority in deduplication
+    semantic_matches = get_semantic_search_candidates(
+        context_embedding=context_embedding,
+        exclude_ids=session.shown_meme_ids,
+        limit=30,
+        context_tags=context_tags  # NEW: Pass tags for hybrid matching
+    )
+    all_candidates.extend(semantic_matches)
+    
+    # 4b. Add personal pattern matches (for personalization)
     personal_patterns = find_personal_patterns(
         user_id=user_id,
         context_embedding=context_embedding
     )
     
     for pattern in personal_patterns:
-        # Pick representative meme from pattern
         reference_meme = weighted_selection_from_tags(
             recent_meme_ids=pattern.get('recent_meme_ids', []),
             exclude_ids=session.shown_meme_ids
         )
         
         if reference_meme:
-            # Find similar memes
             similar = find_similar_memes(
                 reference_meme=reference_meme,
                 exclude_ids=session.shown_meme_ids,
-                limit=30
+                limit=20  # Reduced limit - semantic search is primary now
             )
             all_candidates.extend(similar)
     
-    # 4b. Try global patterns if not enough candidates
-    if len(all_candidates) < 50:
+    # 4c. Add global patterns if needed (trending/popular)
+    if len(all_candidates) < 40:
         global_patterns = find_global_patterns(
             context_embedding=context_embedding
         )
@@ -1210,19 +1604,9 @@ def get_recommendations(
                 similar = find_similar_memes(
                     reference_meme=reference_meme,
                     exclude_ids=session.shown_meme_ids,
-                    limit=30
+                    limit=20
                 )
                 all_candidates.extend(similar)
-    
-    # 4c. Zero-shot semantic search if patterns are weak
-    # This handles unique queries that have no historical patterns
-    if len(all_candidates) < 30:
-        semantic_matches = get_semantic_search_candidates(
-            context_embedding=context_embedding,
-            exclude_ids=session.shown_meme_ids,
-            limit=30
-        )
-        all_candidates.extend(semantic_matches)
     
     # 4d. Popular fallback if STILL not enough (last resort)
     if len(all_candidates) < 20:
@@ -1245,11 +1629,50 @@ def get_recommendations(
     
     candidate_list = list(unique_candidates.values())
     
-    # Step 6: Apply Thompson Sampling
+    # Step 5b: GEMINI RE-RANKING - Use AI to rank CLIP candidates by context fit
+    # Only run on first request of session (when we have fresh candidates)
+    if is_first_request and len(candidate_list) > 0:
+        # Prepare meme data for Gemini
+        meme_data_for_gemini = [
+            {
+                'id': c['meme']['id'],
+                'use_case': c['meme'].get('use_case', ''),
+                'frontend_tags': c['meme'].get('frontend_tags', []),
+                'image_url': c['meme'].get('image_url', '')
+            }
+            for c in candidate_list[:30]  # Top 30 from CLIP
+        ]
+        
+        # Get Gemini's ranking
+        ranked_ids = rank_memes_with_gemini(
+            context=context,
+            meme_candidates=meme_data_for_gemini,
+            batch_size=30
+        )
+        
+        # Reorder candidates based on Gemini's ranking
+        if ranked_ids:
+            id_to_candidate = {c['meme']['id']: c for c in candidate_list}
+            reordered = []
+            for meme_id in ranked_ids:
+                if meme_id in id_to_candidate:
+                    reordered.append(id_to_candidate[meme_id])
+            
+            # Add any candidates Gemini missed (shouldn't happen, but safety)
+            seen_ids = set(ranked_ids)
+            for c in candidate_list:
+                if c['meme']['id'] not in seen_ids:
+                    reordered.append(c)
+            
+            candidate_list = reordered
+            print(f"✅ Gemini reordered {len(reordered)} candidates")
+    
+    # Step 6: Apply Thompson Sampling (now with tag affinity!)
     if len(candidate_list) > 0:
         thompson_selected = thompson_sampling_selection(
             candidates=candidate_list,
-            num_selections=min(30, len(candidate_list))
+            num_selections=min(30, len(candidate_list)),
+            user=user  # Pass user for tag affinity boost
         )
     else:
         thompson_selected = []
@@ -1267,6 +1690,22 @@ def get_recommendations(
     # Step 9: Take batch_size memes
     final_batch = diverse_final[:batch_size]
     
+    # Check if we've exhausted all memes (no more to show)
+    if len(final_batch) == 0:
+        # User has seen all 30+ memes and none matched
+        return {
+            'memes': [],
+            'session_id': session_id,
+            'has_more': False,
+            'error': 'no_matching_memes',
+            'message': 'No matching memes found for your context. Try a different description!',
+            'metadata': {
+                'total_candidates': len(candidate_list),
+                'shown_count': len(session.shown_meme_ids),
+                'exhausted': True
+            }
+        }
+    
     # Update session with shown memes
     for candidate in final_batch:
         session.shown_meme_ids.append(candidate['meme']['id'])
@@ -1274,18 +1713,25 @@ def get_recommendations(
     # Store candidates for progressive consumption
     session.all_candidates = diverse_final
     
+    # Calculate if there are more memes available
+    remaining = len(diverse_final) - batch_size
+    has_more = remaining > 0
+    
     # Step 10: Return results
     return {
         'memes': [candidate['meme'] for candidate in final_batch],
         'session_id': session_id,
+        'has_more': has_more,
         'metadata': {
             'total_candidates': len(candidate_list),
             'after_thompson': len(thompson_selected),
             'after_diversity': len(diverse_final),
             'returned': len(final_batch),
+            'remaining': remaining,
             'has_exploration': len(exploration_candidates) > 0,
             'has_curated': len(curated_injection) > 0,
             'curated_count': len(curated_injection),
-            'exploration_query_count': query_count if is_first_request else user_dict.get('exploration_query_count', 0)
+            'exploration_query_count': query_count if is_first_request else user_dict.get('exploration_query_count', 0),
+            'gemini_ranked': is_first_request  # Flag if Gemini ranking was used
         }
     }
